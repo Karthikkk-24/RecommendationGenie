@@ -9,8 +9,22 @@
     box-sizing: border-box;
 }
 
+.search_container {
+    width: 60vw;
+    min-width: 300px;
+    height: 30vh;
+    border: 1px solid black;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 input {
     height: 4.5vh;
     width: 90%;
     text-align: center;
+    border-radius: 0.5rem;
+    border: 0.1vh solid gray;
+    font-size: 1.2rem;
 }
