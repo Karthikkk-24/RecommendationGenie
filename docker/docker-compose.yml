@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: genie
+      POSTGRES_PASSWORD: genie
+      POSTGRES_DB: recommendation_genie
+    ports:
+      - "5432:5432"
+    volumes:
+      - genie_pg:/var/lib/postgresql/data
+
+volumes:
+  genie_pg:
