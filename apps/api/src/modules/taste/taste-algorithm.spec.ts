@@ -1,0 +1,24 @@
+import { applyPreferenceUpdate, patchesFromFeedbackReason } from './taste-algorithm';
+
+describe('TasteService algorithm', () => {
+  it('does not let a single interaction rewrite a profile', () => {
+    const next = applyPreferenceUpdate(0.2, 1, 0.25);
+    expect(next).toBeLessThanOrEqual(0.5);
+    expect(next).toBeGreaterThan(0.2);
+  });
+
+  it('reduces slow-content preference when feedback is TOO_SLOW', () => {
+    const patch = patchesFromFeedbackReason('TOO_SLOW');
+    expect(patch.features?.[0]?.featureKey).toBe('slow');
+    expect(patch.features?.[0]?.signal).toBeLessThan(0);
+    const pacing = applyPreferenceUpdate(-0.1, patch.scalar?.pacing ?? 0, 0.2);
+    expect(pacing).toBeGreaterThan(-0.1);
+  });
+
+  it('lowers genre weight for WRONG_GENRE', () => {
+    const patch = patchesFromFeedbackReason('WRONG_GENRE', { genres: ['romance'] });
+    expect(patch.features).toEqual([
+      expect.objectContaining({ featureType: 'GENRE', featureKey: 'romance', signal: -1 }),
+    ]);
+  });
+});
