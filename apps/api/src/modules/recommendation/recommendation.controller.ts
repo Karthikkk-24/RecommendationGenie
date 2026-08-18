@@ -1,0 +1,74 @@
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  mediaTypeValues,
+  moodValues,
+  recommendationModeValues,
+  type MediaType,
+  type Mood,
+  type RecommendationMode,
+} from '@recommendation-genie/types';
+import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RecommendationService } from './recommendation.service';
+
+class GenerateDto {
+  @IsOptional()
+  @IsEnum(recommendationModeValues)
+  mode?: RecommendationMode;
+
+  @IsOptional()
+  @IsEnum(mediaTypeValues)
+  mediaType?: MediaType;
+
+  @IsOptional()
+  @IsString()
+  similarToId?: string;
+
+  @IsOptional()
+  @IsEnum(moodValues)
+  mood?: Mood;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  count?: number;
+}
+
+@Controller('recommendations')
+@UseGuards(JwtAuthGuard)
+export class RecommendationController {
+  constructor(private readonly recommendations: RecommendationService) {}
+
+  @Get()
+  latest(@CurrentUser() user: AuthUser) {
+    return this.recommendations.latest(user.id);
+  }
+
+  @Get('history')
+  history(@CurrentUser() user: AuthUser) {
+    return this.recommendations.history(user.id);
+  }
+
+  @Get('match/:mediaId')
+  match(@CurrentUser() user: AuthUser, @Param('mediaId') mediaId: string) {
+    return this.recommendations.matchForMedia(user.id, mediaId);
+  }
+
+  @Post('generate')
+  generate(@CurrentUser() user: AuthUser, @Body() dto: GenerateDto) {
+    return this.recommendations.generate(user.id, {
+      mode: dto.mode ?? 'FOR_YOU',
+      mediaType: dto.mediaType,
+      similarToId: dto.similarToId,
+      mood: dto.mood,
+      count: dto.count ?? 10,
+    });
+  }
+
+  @Get(':id')
+  getById(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.recommendations.getById(user.id, id);
+  }
+}
