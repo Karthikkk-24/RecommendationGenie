@@ -1,0 +1,11 @@
+{
+  "extends": "@recommendation-genie/tsconfig/base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "rootDir": "."
+  },
+  "include": ["src"],
+  "exclude": ["generated", "node_modules"]
+}

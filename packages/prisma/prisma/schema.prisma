@@ -1,0 +1,545 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../generated"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector, pg_trgm]
+}
+
+enum MediaType {
+  MOVIE
+  GAME
+  MUSIC
+  BOOK
+  TV_SHOW
+  ANIME
+  PODCAST
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum OnboardingStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum EmailTokenPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+enum InteractionType {
+  VIEW
+  CLICK
+  LIKE
+  LOVE
+  DISLIKE
+  SAVE
+  SKIP
+  CONSUMED
+  RATED
+  NOT_INTERESTED
+}
+
+enum FeedbackReason {
+  TOO_SLOW
+  TOO_PREDICTABLE
+  WRONG_GENRE
+  DONT_LIKE_CREATOR
+  NOT_INTERESTED_IN_PREMISE
+  TOO_DIFFICULT
+  TOO_DARK
+  TOO_MAINSTREAM
+  TOO_OBSCURE
+  NOT_MY_MOOD
+  OTHER
+}
+
+enum FeedbackAction {
+  LOVE
+  LIKE
+  MAYBE
+  NOT_FOR_ME
+  NEVER_THIS_TYPE
+  ALREADY_CONSUMED
+  SAVE
+}
+
+enum FeatureType {
+  GENRE
+  THEME
+  TAG
+  CREATOR
+  MEDIA_TYPE
+  PACING
+}
+
+enum PersonRole {
+  ACTOR
+  DIRECTOR
+  ARTIST
+  DEVELOPER
+  WRITER
+  COMPOSER
+  PUBLISHER
+}
+
+enum EmbeddingEntityType {
+  MEDIA
+  USER_TASTE
+}
+
+enum RecommendationMode {
+  FOR_YOU
+  SIMILAR_TO
+  HIDDEN_GEMS
+  DEEP_CUTS
+  SURPRISE_ME
+  MOOD
+  SHORTLIST
+}
+
+enum Mood {
+  CHILL
+  ADRENALINE
+  EMOTIONAL
+  DARK
+  FUNNY
+  MIND_BENDING
+  RELAXING
+  INTENSE
+}
+
+model User {
+  id                   String            @id @default(cuid())
+  email                String            @unique
+  username             String            @unique
+  passwordHash         String
+  name                 String
+  imageUrl             String?
+  preferredLanguage    String            @default("en")
+  country              String?
+  onboardingStatus     OnboardingStatus  @default(NOT_STARTED)
+  emailVerifiedAt      DateTime?
+  role                 UserRole          @default(USER)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  profile              Profile?
+  preference           UserPreference?
+  tasteProfile         TasteProfile?
+  refreshTokens        RefreshToken[]
+  emailTokens          EmailToken[]
+  interactions         UserMediaInteraction[]
+  ratings              UserMediaRating[]
+  feedback             UserFeedback[]
+  savedItems           SavedItem[]
+  consumption          ConsumptionHistory[]
+  searchHistory        SearchHistory[]
+  generations          RecommendationGeneration[]
+  tasteSnapshots       TasteProfileSnapshot[]
+  tastePreferences     TastePreference[]
+  analyticsEvents      AnalyticsEvent[]
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  bio         String?
+  onboarding  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserPreference {
+  id                 String      @id @default(cuid())
+  userId             String      @unique
+  enabledMediaTypes  MediaType[]
+  favoriteGenres     String[]
+  dislikedGenres     String[]
+  preferredPacing    Float?
+  preferredComplexity Float?
+  preferredTone      String?
+  preferredThemes    String[]
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model EmailToken {
+  id        String             @id @default(cuid())
+  userId    String
+  purpose   EmailTokenPurpose
+  tokenHash String             @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime           @default(now())
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+}
+
+model MediaItem {
+  id              String     @id @default(cuid())
+  type            MediaType
+  title           String
+  description     String?
+  releaseDate     DateTime?
+  language        String?
+  runtimeMinutes  Int?
+  posterUrl       String?
+  popularity      Float      @default(0)
+  qualityScore    Float      @default(0)
+  pacing          Float      @default(0)
+  complexity      Float      @default(0)
+  darkness        Float      @default(0)
+  emotionalIntensity Float   @default(0)
+  metadata        Json?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  sources         MediaSource[]
+  genres          MediaGenreLink[]
+  tags            MediaTagLink[]
+  people          MediaPersonLink[]
+  interactions    UserMediaInteraction[]
+  ratings         UserMediaRating[]
+  feedback        UserFeedback[]
+  savedItems      SavedItem[]
+  consumption     ConsumptionHistory[]
+  recommendationItems RecommendationItem[]
+  similarFrom     MediaSimilarity[] @relation("SimilarFrom")
+  similarTo       MediaSimilarity[] @relation("SimilarTo")
+
+  @@index([type, popularity])
+  @@index([type, releaseDate])
+  @@index([title])
+}
+
+model MediaSource {
+  id           String    @id @default(cuid())
+  mediaItemId  String
+  provider     String
+  externalId   String
+  lastSyncedAt DateTime  @default(now())
+  raw          Json?
+  mediaItem    MediaItem @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([mediaItemId])
+}
+
+model MediaGenre {
+  id    String           @id @default(cuid())
+  slug  String           @unique
+  name  String
+  items MediaGenreLink[]
+}
+
+model MediaGenreLink {
+  mediaItemId String
+  genreId     String
+  mediaItem   MediaItem  @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+  genre       MediaGenre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([mediaItemId, genreId])
+  @@index([genreId])
+}
+
+model MediaTag {
+  id    String         @id @default(cuid())
+  slug  String         @unique
+  name  String
+  items MediaTagLink[]
+}
+
+model MediaTagLink {
+  mediaItemId String
+  tagId       String
+  mediaItem   MediaItem @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+  tag         MediaTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([mediaItemId, tagId])
+  @@index([tagId])
+}
+
+model MediaPerson {
+  id    String            @id @default(cuid())
+  slug  String            @unique
+  name  String
+  items MediaPersonLink[]
+}
+
+model MediaPersonLink {
+  mediaItemId String
+  personId    String
+  role        PersonRole
+  mediaItem   MediaItem   @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+  person      MediaPerson @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([mediaItemId, personId, role])
+  @@index([personId])
+}
+
+model MediaSimilarity {
+  id          String    @id @default(cuid())
+  fromId      String
+  toId        String
+  score       Float
+  from        MediaItem @relation("SimilarFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to          MediaItem @relation("SimilarTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId])
+  @@index([fromId, score])
+}
+
+model UserMediaInteraction {
+  id                   String            @id @default(cuid())
+  userId               String
+  mediaItemId          String
+  type                 InteractionType
+  metadata             Json?
+  recommendationItemId String?
+  createdAt            DateTime          @default(now())
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaItem            MediaItem         @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+  recommendationItem   RecommendationItem? @relation(fields: [recommendationItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([userId, mediaItemId])
+  @@index([userId, type])
+}
+
+model UserMediaRating {
+  id          String    @id @default(cuid())
+  userId      String
+  mediaItemId String
+  rating      Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaItem   MediaItem @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mediaItemId])
+}
+
+model UserFeedback {
+  id                   String           @id @default(cuid())
+  userId               String
+  mediaItemId          String
+  recommendationItemId String?
+  action               FeedbackAction
+  reason               FeedbackReason?
+  otherText            String?
+  createdAt            DateTime         @default(now())
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaItem            MediaItem        @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+  recommendationItem   RecommendationItem? @relation(fields: [recommendationItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+model SavedItem {
+  id          String    @id @default(cuid())
+  userId      String
+  mediaItemId String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaItem   MediaItem @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mediaItemId])
+  @@index([userId, createdAt])
+}
+
+model ConsumptionHistory {
+  id          String    @id @default(cuid())
+  userId      String
+  mediaItemId String
+  consumedAt  DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaItem   MediaItem @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consumedAt])
+}
+
+model SearchHistory {
+  id        String     @id @default(cuid())
+  userId    String
+  query     String
+  mediaType MediaType?
+  createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model TasteProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  complexity           Float    @default(0)
+  darkness             Float    @default(0)
+  emotionalIntensity   Float    @default(0)
+  novelty              Float    @default(0)
+  popularityPreference Float    @default(0)
+  mainstreamVsNiche    Float    @default(0)
+  pacing               Float    @default(0)
+  algorithmVersion     String   @default("v1.0")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TastePreference {
+  id          String      @id @default(cuid())
+  userId      String
+  featureType FeatureType
+  featureKey  String
+  weight      Float       @default(0)
+  updatedAt   DateTime    @updatedAt
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, featureType, featureKey])
+  @@index([userId, featureType, featureKey])
+}
+
+model TasteProfileSnapshot {
+  id        String   @id @default(cuid())
+  userId    String
+  scalars   Json
+  features  Json
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model RecommendationGeneration {
+  id               String             @id @default(cuid())
+  userId           String
+  algorithmVersion String
+  mode             RecommendationMode
+  candidateCount   Int
+  scoringWeights   Json
+  mood             Mood?
+  createdAt        DateTime           @default(now())
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items            RecommendationItem[]
+
+  @@index([userId, createdAt])
+}
+
+model RecommendationItem {
+  id             String                   @id @default(cuid())
+  generationId   String
+  mediaItemId    String
+  rank           Int
+  finalScore     Float
+  contentScore   Float
+  tasteScore     Float
+  feedbackScore  Float
+  creatorScore   Float
+  qualityScore   Float
+  noveltyScore   Float
+  aiScore        Float?
+  explanation    String?
+  reason         String?
+  generation     RecommendationGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  mediaItem      MediaItem                @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+  interactions   UserMediaInteraction[]
+  feedback       UserFeedback[]
+
+  @@unique([generationId, rank])
+  @@index([generationId, rank])
+}
+
+model Embedding {
+  id          String               @id @default(cuid())
+  entityType  EmbeddingEntityType
+  entityId    String
+  model       String
+  dimensions  Int
+  contentHash String
+  vector      Unsupported("vector(1536)")
+  generatedAt DateTime             @default(now())
+
+  @@unique([entityType, entityId, model])
+  @@index([entityType, entityId])
+}
+
+model AiRequest {
+  id            String      @id @default(cuid())
+  userId        String?
+  requestType   String
+  provider      String
+  model         String
+  inputTokens   Int?
+  outputTokens  Int?
+  latencyMs     Int
+  costEstimate  Float?
+  success       Boolean
+  errorMessage  String?
+  createdAt     DateTime    @default(now())
+  response      AiResponse?
+
+  @@index([createdAt])
+  @@index([success, createdAt])
+}
+
+model AiResponse {
+  id        String    @id @default(cuid())
+  requestId String    @unique
+  payload   Json
+  request   AiRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model AnalyticsEvent {
+  id           String   @id @default(cuid())
+  userId       String?
+  eventName    String
+  mediaItemId  String?
+  generationId String?
+  payload      Json?
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventName, createdAt])
+  @@index([userId, createdAt])
+}
+
+model CacheEntry {
+  key       String   @id
+  value     Json
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model RecommendationConfig {
+  id               String   @id @default(cuid())
+  algorithmVersion String   @unique
+  weights          Json
+  pipeline         Json
+  active           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

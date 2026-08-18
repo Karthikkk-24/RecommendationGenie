@@ -1,0 +1,38 @@
+{
+  "name": "@recommendation-genie/prisma",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts",
+      "import": "./src/index.ts",
+      "require": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "generate": "DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@localhost:5432/genie} DIRECT_DATABASE_URL=${DIRECT_DATABASE_URL:-postgresql://user:pass@localhost:5432/genie} prisma generate",
+    "postinstall": "pnpm generate",
+    "build": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "seed": "tsx prisma/seed.ts",
+    "studio": "prisma studio",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "@recommendation-genie/config": "workspace:*",
+    "dotenv": "^17.2.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@recommendation-genie/tsconfig": "workspace:*",
+    "@types/pg": "^8.15.5",
+    "prisma": "^7.9.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

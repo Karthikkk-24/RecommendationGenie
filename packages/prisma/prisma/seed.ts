@@ -1,0 +1,798 @@
+import 'dotenv/config';
+import { ALGORITHM_VERSION, PIPELINE, SCORING_WEIGHTS } from '@recommendation-genie/config';
+import { createPrismaClient } from '../src/index';
+
+type SeedMedia = {
+  id: string;
+  type: 'MOVIE' | 'GAME' | 'MUSIC';
+  title: string;
+  description: string;
+  year: number;
+  language: string;
+  runtimeMinutes: number | null;
+  posterUrl: string;
+  popularity: number;
+  qualityScore: number;
+  pacing: number;
+  complexity: number;
+  darkness: number;
+  emotionalIntensity: number;
+  genres: string[];
+  tags: string[];
+  people: { name: string; role: 'DIRECTOR' | 'ACTOR' | 'ARTIST' | 'DEVELOPER' | 'COMPOSER' }[];
+};
+
+const catalog: SeedMedia[] = [
+  {
+    id: 'media_interstellar',
+    type: 'MOVIE',
+    title: 'Interstellar',
+    description:
+      'A crew travels through a wormhole in search of a new home for humanity, balancing intimate family drama with cosmic-scale science.',
+    year: 2014,
+    language: 'en',
+    runtimeMinutes: 169,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNAvIx.jpg',
+    popularity: 0.86,
+    qualityScore: 0.94,
+    pacing: -0.2,
+    complexity: 0.91,
+    darkness: 0.35,
+    emotionalIntensity: 0.82,
+    genres: ['sci-fi', 'drama', 'adventure'],
+    tags: ['space', 'time', 'atmospheric', 'psychological', 'family'],
+    people: [
+      { name: 'Christopher Nolan', role: 'DIRECTOR' },
+      { name: 'Matthew McConaughey', role: 'ACTOR' },
+      { name: 'Hans Zimmer', role: 'COMPOSER' },
+    ],
+  },
+  {
+    id: 'media_arrival',
+    type: 'MOVIE',
+    title: 'Arrival',
+    description:
+      'A linguist is recruited to communicate with extraterrestrial visitors, unfolding a cerebral story about language, time, and grief.',
+    year: 2016,
+    language: 'en',
+    runtimeMinutes: 116,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/p2lVAcKeR3ae7FQcc7WFl06FHr8.jpg',
+    popularity: 0.72,
+    qualityScore: 0.91,
+    pacing: -0.25,
+    complexity: 0.88,
+    darkness: 0.28,
+    emotionalIntensity: 0.8,
+    genres: ['sci-fi', 'drama', 'mystery'],
+    tags: ['first-contact', 'linguistic', 'atmospheric', 'psychological'],
+    people: [
+      { name: 'Denis Villeneuve', role: 'DIRECTOR' },
+      { name: 'Amy Adams', role: 'ACTOR' },
+    ],
+  },
+  {
+    id: 'media_blade_runner_2049',
+    type: 'MOVIE',
+    title: 'Blade Runner 2049',
+    description:
+      'A replicant blade runner uncovers a secret that could unravel society in a neon-soaked, melancholic future.',
+    year: 2017,
+    language: 'en',
+    runtimeMinutes: 164,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/gajva2L0gFNbSkaG7E2Ao1dM0pM.jpg',
+    popularity: 0.7,
+    qualityScore: 0.93,
+    pacing: -0.3,
+    complexity: 0.86,
+    darkness: 0.72,
+    emotionalIntensity: 0.7,
+    genres: ['sci-fi', 'thriller', 'drama'],
+    tags: ['cyberpunk', 'dystopian', 'atmospheric', 'neo-noir'],
+    people: [
+      { name: 'Denis Villeneuve', role: 'DIRECTOR' },
+      { name: 'Ryan Gosling', role: 'ACTOR' },
+    ],
+  },
+  {
+    id: 'media_dark',
+    type: 'MOVIE',
+    title: 'Dark',
+    description:
+      'A small German town hides a time-travel conspiracy that binds four families across decades of guilt and secrets.',
+    year: 2017,
+    language: 'de',
+    runtimeMinutes: 60,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/apbrbFs4kkcVhAxt2qQXgQvJfB.jpg',
+    popularity: 0.68,
+    qualityScore: 0.92,
+    pacing: -0.1,
+    complexity: 0.95,
+    darkness: 0.88,
+    emotionalIntensity: 0.78,
+    genres: ['thriller', 'sci-fi', 'mystery', 'drama'],
+    tags: ['time-travel', 'psychological', 'dystopian', 'family'],
+    people: [{ name: 'Baran bo Odar', role: 'DIRECTOR' }],
+  },
+  {
+    id: 'media_prestige',
+    type: 'MOVIE',
+    title: 'The Prestige',
+    description:
+      'Rival magicians wage an obsessive war of illusions, sacrifice, and scientific secrets in Victorian London.',
+    year: 2006,
+    language: 'en',
+    runtimeMinutes: 130,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/tRNlZbgNCNBcN3IY0ehYV7fy4GE.jpg',
+    popularity: 0.74,
+    qualityScore: 0.9,
+    pacing: 0.1,
+    complexity: 0.84,
+    darkness: 0.55,
+    emotionalIntensity: 0.66,
+    genres: ['thriller', 'drama', 'mystery'],
+    tags: ['obsession', 'twist', 'psychological', 'period'],
+    people: [
+      { name: 'Christopher Nolan', role: 'DIRECTOR' },
+      { name: 'Hugh Jackman', role: 'ACTOR' },
+    ],
+  },
+  {
+    id: 'media_ex_machina',
+    type: 'MOVIE',
+    title: 'Ex Machina',
+    description:
+      'A young programmer is invited to administer the Turing test to an intelligent humanoid robot with hidden motives.',
+    year: 2014,
+    language: 'en',
+    runtimeMinutes: 108,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/9jeGtfVM2MYE3AoZc8ZczD7q4rK.jpg',
+    popularity: 0.61,
+    qualityScore: 0.88,
+    pacing: -0.15,
+    complexity: 0.8,
+    darkness: 0.6,
+    emotionalIntensity: 0.58,
+    genres: ['sci-fi', 'thriller', 'drama'],
+    tags: ['ai', 'psychological', 'isolated', 'ethical'],
+    people: [
+      { name: 'Alex Garland', role: 'DIRECTOR' },
+      { name: 'Alicia Vikander', role: 'ACTOR' },
+    ],
+  },
+  {
+    id: 'media_upgrade',
+    type: 'MOVIE',
+    title: 'Upgrade',
+    description:
+      'A maimed man is implanted with an AI chip that restores his body and pushes him into violent revenge.',
+    year: 2018,
+    language: 'en',
+    runtimeMinutes: 100,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/adOzdWS35KAo21r9R4BuFCkLer6.jpg',
+    popularity: 0.48,
+    qualityScore: 0.8,
+    pacing: 0.55,
+    complexity: 0.45,
+    darkness: 0.7,
+    emotionalIntensity: 0.62,
+    genres: ['sci-fi', 'action', 'thriller'],
+    tags: ['cyberpunk', 'ai', 'revenge', 'body-horror'],
+    people: [{ name: 'Leigh Whannell', role: 'DIRECTOR' }],
+  },
+  {
+    id: 'media_martian',
+    type: 'MOVIE',
+    title: 'The Martian',
+    description:
+      'An astronaut stranded on Mars uses ingenuity and science to survive until a rescue can be mounted.',
+    year: 2015,
+    language: 'en',
+    runtimeMinutes: 144,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/5BHuvQ6p9kfc091Z8tgFZryDo2C.jpg',
+    popularity: 0.83,
+    qualityScore: 0.86,
+    pacing: 0.2,
+    complexity: 0.55,
+    darkness: 0.15,
+    emotionalIntensity: 0.5,
+    genres: ['sci-fi', 'adventure', 'drama'],
+    tags: ['space', 'survival', 'optimistic', 'science'],
+    people: [
+      { name: 'Ridley Scott', role: 'DIRECTOR' },
+      { name: 'Matt Damon', role: 'ACTOR' },
+    ],
+  },
+  {
+    id: 'media_romcom_generic',
+    type: 'MOVIE',
+    title: 'Love in the City',
+    description:
+      'A formulaic romantic comedy about two opposites who meet-cute, misunderstand each other, and fall in love in montage.',
+    year: 2019,
+    language: 'en',
+    runtimeMinutes: 102,
+    posterUrl: 'https://picsum.photos/seed/romcom/500/750',
+    popularity: 0.78,
+    qualityScore: 0.42,
+    pacing: 0.35,
+    complexity: -0.7,
+    darkness: -0.8,
+    emotionalIntensity: 0.2,
+    genres: ['romance', 'comedy'],
+    tags: ['formulaic', 'meet-cute', 'mainstream', 'light'],
+    people: [{ name: 'Jane Example', role: 'DIRECTOR' }],
+  },
+  {
+    id: 'media_romcom_2',
+    type: 'MOVIE',
+    title: 'Wedding Weekend',
+    description: 'Friends reunite for a destination wedding and pair off according to a familiar rom-com checklist.',
+    year: 2021,
+    language: 'en',
+    runtimeMinutes: 98,
+    posterUrl: 'https://picsum.photos/seed/wedding/500/750',
+    popularity: 0.71,
+    qualityScore: 0.38,
+    pacing: 0.4,
+    complexity: -0.65,
+    darkness: -0.75,
+    emotionalIntensity: 0.15,
+    genres: ['romance', 'comedy'],
+    tags: ['formulaic', 'wedding', 'mainstream'],
+    people: [{ name: 'Sam Sparkle', role: 'DIRECTOR' }],
+  },
+  {
+    id: 'media_hereditary',
+    type: 'MOVIE',
+    title: 'Hereditary',
+    description: 'A grieving family is haunted by tragedy and occult inheritance in a slow-burn psychological horror.',
+    year: 2018,
+    language: 'en',
+    runtimeMinutes: 127,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/p9fmuz2Oj3HtEJEqXhc7OH0PPOe.jpg',
+    popularity: 0.64,
+    qualityScore: 0.89,
+    pacing: -0.35,
+    complexity: 0.7,
+    darkness: 0.96,
+    emotionalIntensity: 0.9,
+    genres: ['horror', 'drama', 'mystery'],
+    tags: ['psychological', 'family', 'occult', 'slow-burn'],
+    people: [{ name: 'Ari Aster', role: 'DIRECTOR' }],
+  },
+  {
+    id: 'media_mad_max',
+    type: 'MOVIE',
+    title: 'Mad Max: Fury Road',
+    description: 'A high-octane desert chase where survivors flee a tyrant in a world of rust, chrome, and fire.',
+    year: 2015,
+    language: 'en',
+    runtimeMinutes: 120,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/hA2pel9JgPeROzSo3YiK3qKoJcm.jpg',
+    popularity: 0.88,
+    qualityScore: 0.95,
+    pacing: 0.95,
+    complexity: 0.25,
+    darkness: 0.55,
+    emotionalIntensity: 0.7,
+    genres: ['action', 'adventure', 'sci-fi'],
+    tags: ['post-apocalyptic', 'adrenaline', 'stunts'],
+    people: [
+      { name: 'George Miller', role: 'DIRECTOR' },
+      { name: 'Charlize Theron', role: 'ACTOR' },
+    ],
+  },
+  {
+    id: 'media_tlou',
+    type: 'GAME',
+    title: 'The Last of Us',
+    description:
+      'Joel and Ellie cross a ruined America in a grounded, character-driven survival story about found family.',
+    year: 2013,
+    language: 'en',
+    runtimeMinutes: 900,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7h.jpg',
+    popularity: 0.9,
+    qualityScore: 0.96,
+    pacing: -0.05,
+    complexity: 0.7,
+    darkness: 0.78,
+    emotionalIntensity: 0.92,
+    genres: ['action', 'adventure', 'drama'],
+    tags: ['post-apocalyptic', 'survival', 'narrative', 'psychological'],
+    people: [{ name: 'Naughty Dog', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_tlou2',
+    type: 'GAME',
+    title: 'The Last of Us Part II',
+    description: 'A brutal cycle of revenge in Seattle, told through overlapping perspectives and moral discomfort.',
+    year: 2020,
+    language: 'en',
+    runtimeMinutes: 1500,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg',
+    popularity: 0.84,
+    qualityScore: 0.93,
+    pacing: 0.15,
+    complexity: 0.75,
+    darkness: 0.9,
+    emotionalIntensity: 0.95,
+    genres: ['action', 'adventure', 'drama'],
+    tags: ['revenge', 'survival', 'narrative', 'psychological'],
+    people: [{ name: 'Naughty Dog', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_cyberpunk',
+    type: 'GAME',
+    title: 'Cyberpunk 2077',
+    description:
+      'An open-world RPG set in Night City, where chrome, corporations, and identity collide in a neon sprawl.',
+    year: 2020,
+    language: 'en',
+    runtimeMinutes: 2400,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co4jni.jpg',
+    popularity: 0.87,
+    qualityScore: 0.82,
+    pacing: 0.3,
+    complexity: 0.72,
+    darkness: 0.65,
+    emotionalIntensity: 0.6,
+    genres: ['rpg', 'action', 'sci-fi'],
+    tags: ['cyberpunk', 'open-world', 'dystopian', 'choice'],
+    people: [{ name: 'CD Projekt Red', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_deus_ex',
+    type: 'GAME',
+    title: 'Deus Ex: Human Revolution',
+    description:
+      'An augmented agent investigates a conspiracy in a cyberpunk world of transhumanism and corporate power.',
+    year: 2011,
+    language: 'en',
+    runtimeMinutes: 1800,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1yc4.jpg',
+    popularity: 0.5,
+    qualityScore: 0.88,
+    pacing: 0.05,
+    complexity: 0.82,
+    darkness: 0.62,
+    emotionalIntensity: 0.5,
+    genres: ['rpg', 'sci-fi', 'stealth'],
+    tags: ['cyberpunk', 'augmentations', 'conspiracy', 'choice'],
+    people: [{ name: 'Eidos Montreal', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_ghostrunner',
+    type: 'GAME',
+    title: 'Ghostrunner',
+    description: 'A first-person cyberpunk slash-fest on a dying megastructure, built around flow and one-hit death.',
+    year: 2020,
+    language: 'en',
+    runtimeMinutes: 480,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co2e1c.jpg',
+    popularity: 0.42,
+    qualityScore: 0.8,
+    pacing: 0.92,
+    complexity: 0.35,
+    darkness: 0.6,
+    emotionalIntensity: 0.4,
+    genres: ['action', 'sci-fi'],
+    tags: ['cyberpunk', 'parkour', 'difficult', 'adrenaline'],
+    people: [{ name: 'One More Level', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_outer_wilds',
+    type: 'GAME',
+    title: 'Outer Wilds',
+    description:
+      'A 22-minute time loop of solar-system archaeology where curiosity, not combat, unlocks cosmic truth.',
+    year: 2019,
+    language: 'en',
+    runtimeMinutes: 1000,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1tnw.jpg',
+    popularity: 0.46,
+    qualityScore: 0.97,
+    pacing: -0.1,
+    complexity: 0.9,
+    darkness: 0.3,
+    emotionalIntensity: 0.85,
+    genres: ['adventure', 'sci-fi', 'mystery'],
+    tags: ['exploration', 'time-loop', 'atmospheric', 'knowledge'],
+    people: [{ name: 'Mobius Digital', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_hades',
+    type: 'GAME',
+    title: 'Hades',
+    description: 'Zagreus fights out of the Underworld in a stylish roguelike dripping with character and myth.',
+    year: 2020,
+    language: 'en',
+    runtimeMinutes: 1200,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co39vc.jpg',
+    popularity: 0.81,
+    qualityScore: 0.95,
+    pacing: 0.7,
+    complexity: 0.5,
+    darkness: 0.25,
+    emotionalIntensity: 0.55,
+    genres: ['action', 'roguelike', 'indie'],
+    tags: ['mythology', 'runs', 'narrative', 'stylish'],
+    people: [{ name: 'Supergiant Games', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_animal_crossing',
+    type: 'GAME',
+    title: 'Animal Crossing: New Horizons',
+    description: 'A cozy island life sim about decorating, collecting, and chatting with villagers at your own pace.',
+    year: 2020,
+    language: 'en',
+    runtimeMinutes: null,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co3wls.jpg',
+    popularity: 0.92,
+    qualityScore: 0.84,
+    pacing: -0.8,
+    complexity: -0.5,
+    darkness: -0.95,
+    emotionalIntensity: 0.2,
+    genres: ['simulation', 'casual'],
+    tags: ['cozy', 'chill', 'collecting', 'mainstream'],
+    people: [{ name: 'Nintendo', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_disco',
+    type: 'GAME',
+    title: 'Disco Elysium',
+    description:
+      'A detective RPG of inner voices, politics, and failure in a decaying district that refuses easy answers.',
+    year: 2019,
+    language: 'en',
+    runtimeMinutes: 1800,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1u96.jpg',
+    popularity: 0.55,
+    qualityScore: 0.97,
+    pacing: -0.4,
+    complexity: 0.96,
+    darkness: 0.7,
+    emotionalIntensity: 0.8,
+    genres: ['rpg', 'indie', 'mystery'],
+    tags: ['detective', 'psychological', 'writing', 'choice'],
+    people: [{ name: 'ZA/UM', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_perturbator',
+    type: 'MUSIC',
+    title: 'Dangerous Days',
+    description: 'A synthwave album of chrome highways, neon nights, and cinematic cyberpunk dread.',
+    year: 2014,
+    language: 'instrumental',
+    runtimeMinutes: 62,
+    posterUrl: 'https://coverartarchive.org/release/perturbator-dangerous-days/front-500',
+    popularity: 0.38,
+    qualityScore: 0.86,
+    pacing: 0.55,
+    complexity: 0.4,
+    darkness: 0.6,
+    emotionalIntensity: 0.55,
+    genres: ['synthwave', 'electronic'],
+    tags: ['cyberpunk', 'neon', 'instrumental', 'night-drive'],
+    people: [{ name: 'Perturbator', role: 'ARTIST' }],
+  },
+  {
+    id: 'media_carpenter_brut',
+    type: 'MUSIC',
+    title: 'Leather Teeth',
+    description: 'Horror-tinged synthwave with pounding drums and a grindhouse atmosphere.',
+    year: 2018,
+    language: 'instrumental',
+    runtimeMinutes: 39,
+    posterUrl: 'https://coverartarchive.org/release/carpenter-brut-leather-teeth/front-500',
+    popularity: 0.34,
+    qualityScore: 0.84,
+    pacing: 0.7,
+    complexity: 0.3,
+    darkness: 0.65,
+    emotionalIntensity: 0.5,
+    genres: ['synthwave', 'electronic'],
+    tags: ['cyberpunk', 'horror', 'adrenaline'],
+    people: [{ name: 'Carpenter Brut', role: 'ARTIST' }],
+  },
+  {
+    id: 'media_max_richter',
+    type: 'MUSIC',
+    title: 'Sleep',
+    description: 'An eight-hour lullaby of sparse piano and strings designed to be slept through.',
+    year: 2015,
+    language: 'instrumental',
+    runtimeMinutes: 480,
+    posterUrl: 'https://coverartarchive.org/release/max-richter-sleep/front-500',
+    popularity: 0.44,
+    qualityScore: 0.9,
+    pacing: -0.95,
+    complexity: 0.35,
+    darkness: -0.2,
+    emotionalIntensity: 0.4,
+    genres: ['classical', 'ambient'],
+    tags: ['chill', 'sleep', 'minimal', 'atmospheric'],
+    people: [{ name: 'Max Richter', role: 'ARTIST' }],
+  },
+  {
+    id: 'media_radiohead_ok',
+    type: 'MUSIC',
+    title: 'OK Computer',
+    description: 'Anxious, meticulously produced art-rock about alienation in a technologized world.',
+    year: 1997,
+    language: 'en',
+    runtimeMinutes: 53,
+    posterUrl: 'https://coverartarchive.org/release/radiohead-ok-computer/front-500',
+    popularity: 0.8,
+    qualityScore: 0.97,
+    pacing: 0.1,
+    complexity: 0.85,
+    darkness: 0.55,
+    emotionalIntensity: 0.75,
+    genres: ['alternative', 'rock', 'art-rock'],
+    tags: ['alienation', 'technology', 'atmospheric', 'psychological'],
+    people: [{ name: 'Radiohead', role: 'ARTIST' }],
+  },
+  {
+    id: 'media_pop_hit',
+    type: 'MUSIC',
+    title: 'Sunshine Anthem',
+    description: 'A brightly produced chart-pop single engineered for radio and weddings.',
+    year: 2022,
+    language: 'en',
+    runtimeMinutes: 3,
+    posterUrl: 'https://picsum.photos/seed/pop/500/500',
+    popularity: 0.95,
+    qualityScore: 0.4,
+    pacing: 0.6,
+    complexity: -0.7,
+    darkness: -0.85,
+    emotionalIntensity: 0.25,
+    genres: ['pop'],
+    tags: ['mainstream', 'formulaic', 'upbeat'],
+    people: [{ name: 'The Glossies', role: 'ARTIST' }],
+  },
+  {
+    id: 'media_nichibotsu',
+    type: 'MUSIC',
+    title: 'Memory of Water',
+    description: 'Sparse piano and field recordings that sit between ambient and modern classical.',
+    year: 2021,
+    language: 'instrumental',
+    runtimeMinutes: 47,
+    posterUrl: 'https://picsum.photos/seed/ambient/500/500',
+    popularity: 0.12,
+    qualityScore: 0.81,
+    pacing: -0.7,
+    complexity: 0.5,
+    darkness: 0.1,
+    emotionalIntensity: 0.45,
+    genres: ['ambient', 'indie'],
+    tags: ['atmospheric', 'niche', 'calm'],
+    people: [{ name: 'Nichibotsu', role: 'ARTIST' }],
+  },
+  {
+    id: 'media_returnal',
+    type: 'GAME',
+    title: 'Returnal',
+    description: 'A third-person roguelike of alien time-loops, trauma, and bullet-hell combat.',
+    year: 2021,
+    language: 'en',
+    runtimeMinutes: 900,
+    posterUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co2r2l.jpg',
+    popularity: 0.52,
+    qualityScore: 0.9,
+    pacing: 0.75,
+    complexity: 0.78,
+    darkness: 0.72,
+    emotionalIntensity: 0.7,
+    genres: ['action', 'roguelike', 'sci-fi'],
+    tags: ['time-loop', 'psychological', 'difficult', 'alien'],
+    people: [{ name: 'Housemarque', role: 'DEVELOPER' }],
+  },
+  {
+    id: 'media_dune',
+    type: 'MOVIE',
+    title: 'Dune',
+    description: 'Paul Atreides arrives on Arrakis in a monumental adaptation of political sci-fi and myth.',
+    year: 2021,
+    language: 'en',
+    runtimeMinutes: 155,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg',
+    popularity: 0.89,
+    qualityScore: 0.9,
+    pacing: -0.15,
+    complexity: 0.8,
+    darkness: 0.45,
+    emotionalIntensity: 0.65,
+    genres: ['sci-fi', 'adventure', 'drama'],
+    tags: ['epic', 'political', 'desert', 'atmospheric'],
+    people: [
+      { name: 'Denis Villeneuve', role: 'DIRECTOR' },
+      { name: 'Timothée Chalamet', role: 'ACTOR' },
+    ],
+  },
+  {
+    id: 'media_coen_fargo',
+    type: 'MOVIE',
+    title: 'Fargo',
+    description: 'A pregnant police chief untangles a kidnapping plot gone wrong in snowbound Minnesota.',
+    year: 1996,
+    language: 'en',
+    runtimeMinutes: 98,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/rt7cpErzykugOf4sWiTTUAQYLv.jpg',
+    popularity: 0.63,
+    qualityScore: 0.93,
+    pacing: 0.05,
+    complexity: 0.6,
+    darkness: 0.55,
+    emotionalIntensity: 0.5,
+    genres: ['crime', 'thriller', 'dark-comedy'],
+    tags: ['crime', 'midwest', 'character', 'twist'],
+    people: [{ name: 'Joel Coen', role: 'DIRECTOR' }],
+  },
+];
+
+const similarPairs: Array<[string, string, number]> = [
+  ['media_interstellar', 'media_arrival', 0.86],
+  ['media_interstellar', 'media_martian', 0.7],
+  ['media_interstellar', 'media_dune', 0.68],
+  ['media_arrival', 'media_ex_machina', 0.64],
+  ['media_blade_runner_2049', 'media_upgrade', 0.72],
+  ['media_blade_runner_2049', 'media_cyberpunk', 0.78],
+  ['media_blade_runner_2049', 'media_deus_ex', 0.74],
+  ['media_dark', 'media_prestige', 0.66],
+  ['media_dark', 'media_interstellar', 0.6],
+  ['media_tlou', 'media_tlou2', 0.9],
+  ['media_cyberpunk', 'media_deus_ex', 0.8],
+  ['media_cyberpunk', 'media_ghostrunner', 0.7],
+  ['media_cyberpunk', 'media_perturbator', 0.75],
+  ['media_ghostrunner', 'media_carpenter_brut', 0.62],
+  ['media_deus_ex', 'media_upgrade', 0.68],
+  ['media_outer_wilds', 'media_interstellar', 0.58],
+  ['media_disco', 'media_dark', 0.5],
+  ['media_romcom_generic', 'media_romcom_2', 0.92],
+  ['media_perturbator', 'media_carpenter_brut', 0.88],
+  ['media_max_richter', 'media_nichibotsu', 0.7],
+  ['media_radiohead_ok', 'media_disco', 0.45],
+];
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+async function main(): Promise<void> {
+  const url = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error('DATABASE_URL is required to seed');
+  }
+
+  const prisma = createPrismaClient(url);
+
+  await prisma.recommendationConfig.upsert({
+    where: { algorithmVersion: ALGORITHM_VERSION },
+    update: { weights: SCORING_WEIGHTS, pipeline: PIPELINE, active: true },
+    create: {
+      algorithmVersion: ALGORITHM_VERSION,
+      weights: SCORING_WEIGHTS,
+      pipeline: PIPELINE,
+      active: true,
+    },
+  });
+
+  for (const item of catalog) {
+    const genreIds: string[] = [];
+    for (const genre of item.genres) {
+      const row = await prisma.mediaGenre.upsert({
+        where: { slug: slugify(genre) },
+        update: { name: genre },
+        create: { slug: slugify(genre), name: genre },
+      });
+      genreIds.push(row.id);
+    }
+
+    const tagIds: string[] = [];
+    for (const tag of item.tags) {
+      const row = await prisma.mediaTag.upsert({
+        where: { slug: slugify(tag) },
+        update: { name: tag },
+        create: { slug: slugify(tag), name: tag },
+      });
+      tagIds.push(row.id);
+    }
+
+    const people: Array<{ id: string; role: SeedMedia['people'][number]['role'] }> = [];
+    for (const person of item.people) {
+      const row = await prisma.mediaPerson.upsert({
+        where: { slug: slugify(person.name) },
+        update: { name: person.name },
+        create: { slug: slugify(person.name), name: person.name },
+      });
+      people.push({ id: row.id, role: person.role });
+    }
+
+    await prisma.mediaItem.upsert({
+      where: { id: item.id },
+      update: {
+        title: item.title,
+        description: item.description,
+        type: item.type,
+        releaseDate: new Date(`${item.year}-01-01`),
+        language: item.language,
+        runtimeMinutes: item.runtimeMinutes,
+        posterUrl: item.posterUrl,
+        popularity: item.popularity,
+        qualityScore: item.qualityScore,
+        pacing: item.pacing,
+        complexity: item.complexity,
+        darkness: item.darkness,
+        emotionalIntensity: item.emotionalIntensity,
+      },
+      create: {
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        type: item.type,
+        releaseDate: new Date(`${item.year}-01-01`),
+        language: item.language,
+        runtimeMinutes: item.runtimeMinutes,
+        posterUrl: item.posterUrl,
+        popularity: item.popularity,
+        qualityScore: item.qualityScore,
+        pacing: item.pacing,
+        complexity: item.complexity,
+        darkness: item.darkness,
+        emotionalIntensity: item.emotionalIntensity,
+        sources: {
+          create: {
+            provider: 'mock',
+            externalId: item.id,
+          },
+        },
+      },
+    });
+
+    await prisma.mediaGenreLink.deleteMany({ where: { mediaItemId: item.id } });
+    await prisma.mediaTagLink.deleteMany({ where: { mediaItemId: item.id } });
+    await prisma.mediaPersonLink.deleteMany({ where: { mediaItemId: item.id } });
+
+    await prisma.mediaGenreLink.createMany({
+      data: genreIds.map((genreId) => ({ mediaItemId: item.id, genreId })),
+    });
+    await prisma.mediaTagLink.createMany({
+      data: tagIds.map((tagId) => ({ mediaItemId: item.id, tagId })),
+    });
+    await prisma.mediaPersonLink.createMany({
+      data: people.map((person) => ({
+        mediaItemId: item.id,
+        personId: person.id,
+        role: person.role,
+      })),
+    });
+  }
+
+  for (const [fromId, toId, score] of similarPairs) {
+    await prisma.mediaSimilarity.upsert({
+      where: { fromId_toId: { fromId, toId } },
+      update: { score },
+      create: { fromId, toId, score },
+    });
+    await prisma.mediaSimilarity.upsert({
+      where: { fromId_toId: { fromId: toId, toId: fromId } },
+      update: { score },
+      create: { fromId: toId, toId: fromId, score },
+    });
+  }
+
+  await prisma.$disconnect();
+  console.log(`Seeded ${catalog.length} media items.`);
+}
+
+main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});
