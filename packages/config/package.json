@@ -1,0 +1,14 @@
+{
+  "name": "@recommendation-genie/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit --strict --moduleResolution bundler --module ESNext --target ES2022 src/index.ts"
+  }
+}

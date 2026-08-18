@@ -1,0 +1,8 @@
+{
+  "extends": "@recommendation-genie/tsconfig/base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}
