@@ -6,9 +6,11 @@ import { MediaCard, type MediaCardData } from '../../../components/media/media-c
 import { FeedbackControl } from '../../../components/recommendations/feedback-control';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
+import { Input } from '../../../components/ui/input';
 import { api } from '../../../lib/utils';
 
-const modes = ['HIDDEN_GEMS', 'DEEP_CUTS', 'SURPRISE_ME'] as const;
+const modes = ['HIDDEN_GEMS', 'DEEP_CUTS', 'SURPRISE_ME', 'MOOD', 'SIMILAR_TO', 'SHORTLIST'] as const;
+const moods = ['CHILL', 'ADRENALINE', 'EMOTIONAL', 'DARK', 'FUNNY', 'MIND_BENDING', 'RELAXING', 'INTENSE'] as const;
 
 type RecItem = {
   id: string;
@@ -19,11 +21,18 @@ type RecItem = {
 
 export default function DiscoverPage() {
   const [activeMode, setActiveMode] = useState<(typeof modes)[number] | null>(null);
+  const [mood, setMood] = useState<(typeof moods)[number]>('CHILL');
+  const [similarToId, setSimilarToId] = useState('');
+
   const generate = useMutation({
     mutationFn: (mode: (typeof modes)[number]) =>
       api<{ items: RecItem[] }>('/recommendations/generate', {
         method: 'POST',
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify({
+          mode,
+          ...(mode === 'MOOD' ? { mood } : {}),
+          ...(mode === 'SIMILAR_TO' ? { similarToId: similarToId.trim() || undefined } : {}),
+        }),
       }),
     onMutate: (mode) => {
       setActiveMode(mode);
@@ -48,6 +57,31 @@ export default function DiscoverPage() {
             {mode.replaceAll('_', ' ')}
           </Button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap items-end gap-4">
+        <label className="space-y-1 text-sm">
+          <span className="text-[var(--muted)]">Mood (for MOOD mode)</span>
+          <select
+            className="block rounded-lg border border-[var(--line)] bg-transparent px-3 py-2"
+            value={mood}
+            onChange={(event) => setMood(event.target.value as (typeof moods)[number])}
+          >
+            {moods.map((item) => (
+              <option key={item} value={item}>
+                {item.replaceAll('_', ' ')}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="min-w-[240px] flex-1 space-y-1 text-sm">
+          <span className="text-[var(--muted)]">Similar-to media id</span>
+          <Input
+            value={similarToId}
+            onChange={(event) => setSimilarToId(event.target.value)}
+            placeholder="Paste a media item id for SIMILAR_TO"
+          />
+        </label>
       </div>
 
       {generate.isPending ? (
