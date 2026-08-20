@@ -66,20 +66,42 @@ export class OnboardingService {
       update: dto,
       create: { userId, ...dto, enabledMediaTypes: ['MOVIE', 'GAME', 'MUSIC'] },
     });
-    for (const genre of dto.favoriteGenres) {
-      await this.prisma.client.tastePreference.upsert({
-        where: { userId_featureType_featureKey: { userId, featureType: 'GENRE', featureKey: genre } },
-        update: { weight: 0.7 },
-        create: { userId, featureType: 'GENRE', featureKey: genre, weight: 0.7 },
-      });
-    }
-    for (const genre of dto.dislikedGenres) {
-      await this.prisma.client.tastePreference.upsert({
-        where: { userId_featureType_featureKey: { userId, featureType: 'GENRE', featureKey: genre } },
-        update: { weight: -0.7 },
-        create: { userId, featureType: 'GENRE', featureKey: genre, weight: -0.7 },
-      });
-    }
+
+    await this.prisma.client.profile.upsert({
+      where: { userId },
+      update: {
+        onboarding: {
+          favoriteGenres: dto.favoriteGenres,
+          dislikedGenres: dto.dislikedGenres,
+          preferredThemes: dto.preferredThemes,
+          preferredPacing: dto.preferredPacing,
+          preferredComplexity: dto.preferredComplexity,
+          preferredTone: dto.preferredTone,
+        },
+      },
+      create: {
+        userId,
+        onboarding: {
+          favoriteGenres: dto.favoriteGenres,
+          dislikedGenres: dto.dislikedGenres,
+          preferredThemes: dto.preferredThemes,
+          preferredPacing: dto.preferredPacing,
+          preferredComplexity: dto.preferredComplexity,
+          preferredTone: dto.preferredTone,
+        },
+      },
+    });
+
+    await this.taste.seedFromOnboarding(userId, {
+      favoriteGenres: dto.favoriteGenres,
+      dislikedGenres: dto.dislikedGenres,
+      preferredThemes: dto.preferredThemes,
+      preferredPacing: dto.preferredPacing,
+      preferredComplexity: dto.preferredComplexity,
+      preferredTone: dto.preferredTone,
+      enabledMediaTypes: preference.enabledMediaTypes,
+    });
+
     return preference;
   }
 
