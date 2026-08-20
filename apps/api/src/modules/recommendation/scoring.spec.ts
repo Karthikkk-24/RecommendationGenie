@@ -1,4 +1,4 @@
-import { combineScores, weightsForMode, type ScoredCandidate } from './scoring';
+import { combineScores, moodAlignment, weightsForMode, type ScoredCandidate } from './scoring';
 
 describe('scoring', () => {
   it('does not let popularity dominate a strong taste match', () => {
@@ -53,5 +53,21 @@ describe('scoring', () => {
     expect(weightsForMode('SURPRISE_ME', base).exploration).toBeGreaterThan(base.exploration);
     expect(weightsForMode('HIDDEN_GEMS', base).quality).toBeGreaterThan(base.quality);
     expect(weightsForMode('DEEP_CUTS', base).exploration).toBeGreaterThan(base.exploration);
+  });
+
+  it('scores DARK mood higher for dark items', () => {
+    const dark = moodAlignment('DARK', {
+      darkness: 0.8,
+      pacing: 0,
+      emotionalIntensity: 0,
+      complexity: 0,
+    });
+    const light = moodAlignment('DARK', {
+      darkness: -0.8,
+      pacing: 0,
+      emotionalIntensity: 0,
+      complexity: 0,
+    });
+    expect(dark).toBeGreaterThan(light);
   });
 });
