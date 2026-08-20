@@ -72,20 +72,42 @@ export class CandidateGenerationService {
     input: GenerateRecommendationsInput,
   ): Promise<TypeFilter> {
     if (input.mode === 'SURPRISE_ME' && !input.mediaType) {
-      return undefined;
+      // Still honor hard media-type bans even in surprise mode.
+      const banned = await this.bannedMediaTypes(userId);
+      if (banned.size === 0) {
+        return undefined;
+      }
+      const allowed = (['MOVIE', 'GAME', 'MUSIC'] as MediaType[]).filter((type) => !banned.has(type));
+      return allowed.length ? allowed : undefined;
     }
     if (input.mediaType) {
+      const banned = await this.bannedMediaTypes(userId);
+      if (banned.has(input.mediaType)) {
+        return [];
+      }
       return input.mediaType;
     }
     const preference = await this.prisma.client.userPreference.findUnique({
       where: { userId },
       select: { enabledMediaTypes: true },
     });
-    const enabled = preference?.enabledMediaTypes ?? [];
-    if (enabled.length === 0) {
-      return undefined;
+    const banned = await this.bannedMediaTypes(userId);
+    const enabled = (preference?.enabledMediaTypes ?? []) as MediaType[];
+    const filtered = (enabled.length ? enabled : (['MOVIE', 'GAME', 'MUSIC'] as MediaType[])).filter(
+      (type) => !banned.has(type),
+    );
+    if (filtered.length === 0) {
+      return [];
     }
-    return enabled as MediaType[];
+    return filtered;
+  }
+
+  private async bannedMediaTypes(userId: string): Promise<Set<string>> {
+    const rows = await this.prisma.client.tastePreference.findMany({
+      where: { userId, featureType: 'MEDIA_TYPE', weight: { lt: -0.2 } },
+      select: { featureKey: true },
+    });
+    return new Set(rows.map((row) => row.featureKey));
   }
 
   private async forYouMode(

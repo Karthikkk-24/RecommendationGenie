@@ -114,6 +114,16 @@ export class TasteService {
     await this.applyPatch(userId, patch, 0.22);
   }
 
+  async applyMediaTypeBan(userId: string, mediaType: string): Promise<void> {
+    await this.applyPatch(
+      userId,
+      {
+        features: [{ featureType: 'MEDIA_TYPE', featureKey: mediaType, signal: -1 }],
+      },
+      0.35,
+    );
+  }
+
   async snapshot(userId: string): Promise<void> {
     const { profile, features } = await this.getProfile(userId);
     await this.prisma.client.tasteProfileSnapshot.create({
