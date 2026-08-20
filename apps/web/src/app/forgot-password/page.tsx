@@ -1,5 +1,7 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { forgotPasswordSchema, type ForgotPasswordInput } from '@recommendation-genie/types';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '../../components/ui/button';
@@ -8,7 +10,7 @@ import { Input } from '../../components/ui/input';
 import { api } from '../../lib/utils';
 
 export default function ForgotPasswordPage() {
-  const form = useForm<{ email: string }>();
+  const form = useForm<ForgotPasswordInput>({ resolver: zodResolver(forgotPasswordSchema) });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [pending, setPending] = useState(false);
@@ -37,7 +39,10 @@ export default function ForgotPasswordPage() {
               }
             })}
           >
-            <Input type="email" placeholder="Email" {...form.register('email', { required: true })} />
+            <Input type="email" placeholder="Email" {...form.register('email')} />
+            {form.formState.errors.email ? (
+              <p className="text-xs text-red-400">{form.formState.errors.email.message}</p>
+            ) : null}
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? 'Sending…' : 'Send reset link'}
