@@ -9,6 +9,7 @@ import {
   type RecommendationMode,
 } from '@recommendation-genie/types';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
+import { EmailVerifiedGuard } from '../../common/guards/email-verified.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RecommendationService } from './recommendation.service';
 
@@ -37,7 +38,7 @@ class GenerateDto {
 }
 
 @Controller('recommendations')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, EmailVerifiedGuard)
 export class RecommendationController {
   constructor(private readonly recommendations: RecommendationService) {}
 

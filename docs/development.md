@@ -21,7 +21,7 @@ pnpm dev
 
 See [deployment.md](./deployment.md) for Vercel + Render/Railway + Neon. Bind the API to `0.0.0.0:$PORT`.
 
-Email verification links are printed to the API console when `RESEND_API_KEY` is empty. `REQUIRE_EMAIL_VERIFICATION=false` lets onboarding proceed in development.
+Email verification links are printed to the API console when `RESEND_API_KEY` is empty. `EmailVerifiedGuard` gates onboarding and recommendations: set `REQUIRE_EMAIL_VERIFICATION=false` for local console-email workflows. When the flag is unset, enforcement defaults on in `NODE_ENV=production` and off otherwise.
 
 ## Tests
 
