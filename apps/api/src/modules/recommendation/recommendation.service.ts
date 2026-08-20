@@ -23,7 +23,7 @@ export class RecommendationService {
   ) {}
 
   async generate(userId: string, input: GenerateRecommendationsInput) {
-    const blocked = await this.blockedIds(userId);
+    const blocked = await this.blockedIds(userId, input.mode);
     const candidateIds = (await this.candidates.generate(userId, input)).filter((id) => !blocked.has(id));
     const items = await this.prisma.client.mediaItem.findMany({
       where: { id: { in: candidateIds } },
@@ -303,12 +303,36 @@ export class RecommendationService {
     };
   }
 
-  private async blockedIds(userId: string): Promise<Set<string>> {
+  private async blockedIds(userId: string, mode: GenerateRecommendationsInput['mode']): Promise<Set<string>> {
+    // SHORTLIST is intentionally the saved list — do not exclude SAVE there.
+    const types =
+      mode === 'SHORTLIST'
+        ? (['NOT_INTERESTED', 'DISLIKE', 'CONSUMED'] as const)
+        : (['NOT_INTERESTED', 'DISLIKE', 'CONSUMED', 'LIKE', 'LOVE', 'SAVE'] as const);
     const rows = await this.prisma.client.userMediaInteraction.findMany({
-      where: { userId, type: { in: ['NOT_INTERESTED', 'DISLIKE'] } },
+      where: { userId, type: { in: [...types] } },
       select: { mediaItemId: true },
     });
-    return new Set(rows.map((row) => row.mediaItemId));
+    const blocked = new Set(rows.map((row) => row.mediaItemId));
+
+    if (mode !== 'SHORTLIST') {
+      const saved = await this.prisma.client.savedItem.findMany({
+        where: { userId },
+        select: { mediaItemId: true },
+      });
+      for (const row of saved) {
+        blocked.add(row.mediaItemId);
+      }
+      const consumed = await this.prisma.client.consumptionHistory.findMany({
+        where: { userId },
+        select: { mediaItemId: true },
+      });
+      for (const row of consumed) {
+        blocked.add(row.mediaItemId);
+      }
+    }
+
+    return blocked;
   }
 
   private featureScore(keys: string[], weights: Map<string, number>): number {
