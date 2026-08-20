@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import type { FeedbackReason, InteractionType } from '@recommendation-genie/types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
-  INTERACTION_LEARNING_RATES,
   applyPreferenceUpdate,
+  interactionLearningRate,
+  interactionSignal,
   patchesFromFeedbackReason,
-  ratingToSignal,
   type PreferencePatch,
 } from './taste-algorithm';
 
@@ -52,13 +52,11 @@ export class TasteService {
       return;
     }
 
-    const signal =
-      input.type === 'RATED' && input.rating !== undefined
-        ? ratingToSignal(input.rating)
-        : input.type === 'DISLIKE' || input.type === 'NOT_INTERESTED'
-          ? -1
-          : 1;
-    const rate = INTERACTION_LEARNING_RATES[input.type];
+    const signal = interactionSignal(input.type, input.rating);
+    const rate = interactionLearningRate(input.type);
+    if (signal === 0 || rate === 0) {
+      return;
+    }
 
     await this.applyPatch(input.userId, {
       scalar: {
@@ -92,7 +90,7 @@ export class TasteService {
           signal,
         },
       ],
-    }, Math.abs(rate));
+    }, rate);
   }
 
   async applyFeedbackReason(

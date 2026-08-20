@@ -32,6 +32,25 @@ export function ratingToSignal(rating: number): number {
   return clampPreference((rating - 3) / 2);
 }
 
+/** Signed direction for an interaction type. Negative rates (SKIP, DISLIKE) push taste away. */
+export function interactionSignal(type: InteractionType, rating?: number): number {
+  if (type === 'RATED' && rating !== undefined) {
+    return ratingToSignal(rating);
+  }
+  const rate = INTERACTION_LEARNING_RATES[type];
+  if (rate < 0) {
+    return -1;
+  }
+  if (rate > 0) {
+    return 1;
+  }
+  return 0;
+}
+
+export function interactionLearningRate(type: InteractionType): number {
+  return Math.abs(INTERACTION_LEARNING_RATES[type]);
+}
+
 export type PreferencePatch = {
   scalar?: Partial<{
     complexity: number;

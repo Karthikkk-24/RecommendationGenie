@@ -1,4 +1,8 @@
-import { applyPreferenceUpdate, patchesFromFeedbackReason } from './taste-algorithm';
+import {
+  applyPreferenceUpdate,
+  interactionSignal,
+  patchesFromFeedbackReason,
+} from './taste-algorithm';
 
 describe('TasteService algorithm', () => {
   it('does not let a single interaction rewrite a profile', () => {
@@ -20,5 +24,13 @@ describe('TasteService algorithm', () => {
     expect(patch.features).toEqual([
       expect.objectContaining({ featureType: 'GENRE', featureKey: 'romance', signal: -1 }),
     ]);
+  });
+
+  it('treats SKIP and MAYBE-equivalent rates as negative signals', () => {
+    expect(interactionSignal('SKIP')).toBe(-1);
+    expect(interactionSignal('DISLIKE')).toBe(-1);
+    expect(interactionSignal('NOT_INTERESTED')).toBe(-1);
+    expect(interactionSignal('LIKE')).toBe(1);
+    expect(interactionSignal('LOVE')).toBe(1);
   });
 });
