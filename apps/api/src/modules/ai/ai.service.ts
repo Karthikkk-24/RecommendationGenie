@@ -24,12 +24,21 @@ export class AiService {
     candidates: Array<{ id: string; title: string; type: string; genres: string[]; score: number }>;
   }) {
     if (this.isMock()) {
-      return input.candidates.map((item, index) => ({
+      const started = Date.now();
+      const items = input.candidates.map((item, index) => ({
         mediaId: item.id,
         rank: index + 1,
         aiScore: Math.max(0, 1 - index * 0.03),
         reason: 'Deterministic fallback ranking',
       }));
+      await this.log({
+        userId: input.userId,
+        requestType: 'RERANK',
+        success: true,
+        latencyMs: Date.now() - started,
+        payload: { items, mock: true },
+      });
+      return items;
     }
 
     const started = Date.now();
@@ -82,6 +91,14 @@ Return structured ranks preserving diversity across media types and tones.`,
   }): Promise<string> {
     const grounded = `Genie thinks this could be a strong match because it lines up with ${input.likedTitles.slice(0, 3).join(', ') || 'your recent taste'} and leans into ${input.genres.slice(0, 3).join(', ') || 'your preferred themes'}. Content match ${Math.round(input.scores.content * 100)}%, taste match ${Math.round(input.scores.taste * 100)}%.`;
     if (this.isMock()) {
+      const started = Date.now();
+      await this.log({
+        userId: input.userId,
+        requestType: 'EXPLANATION',
+        success: true,
+        latencyMs: Date.now() - started,
+        payload: { explanation: grounded, mock: true },
+      });
       return grounded;
     }
     const started = Date.now();
@@ -108,6 +125,14 @@ Scores: ${JSON.stringify(input.scores)}`,
       return result.object.explanation;
     } catch (error) {
       this.logger.warn(error);
+      await this.log({
+        userId: input.userId,
+        requestType: 'EXPLANATION',
+        success: false,
+        latencyMs: Date.now() - started,
+        errorMessage: error instanceof Error ? error.message : 'explain failed',
+        payload: { explanation: grounded, fallback: true },
+      });
       return grounded;
     }
   }
