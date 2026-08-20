@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { FeedbackAction, InteractionType } from '@recommendation-genie/types';
+import { JOB_QUEUE } from '../../common/jobs/jobs.module';
+import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { InteractionsService } from '../interactions/interactions.service';
 import { TasteService } from '../taste/taste.service';
@@ -21,6 +23,7 @@ export class FeedbackService {
     private readonly prisma: PrismaService,
     private readonly interactions: InteractionsService,
     private readonly taste: TasteService,
+    @Inject(JOB_QUEUE) private readonly jobs: JobQueue,
   ) {}
 
   async create(userId: string, dto: CreateFeedbackDto) {
@@ -55,6 +58,8 @@ export class FeedbackService {
       await this.taste.applyFeedbackReason(userId, dto.mediaItemId, dto.reason);
     }
     await this.taste.snapshot(userId);
+    await this.jobs.enqueue('generate-embedding', { userId });
+    await this.jobs.enqueue('sync-media', { mediaItemId: dto.mediaItemId });
     return row;
   }
 
