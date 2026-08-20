@@ -4,6 +4,8 @@ export function cn(...values: Array<string | false | null | undefined>): string 
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: { message: string; code?: string } };
 
+export const SESSION_EXPIRED_EVENT = 'rg:session-expired';
+
 let refreshInFlight: Promise<boolean> | null = null;
 
 async function refreshSession(): Promise<boolean> {
@@ -33,6 +35,13 @@ function shouldAttemptRefresh(path: string, status: number): boolean {
   return !path.startsWith('/auth/login') && !path.startsWith('/auth/register') && path !== '/auth/refresh';
 }
 
+function notifySessionExpired(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const request = async (): Promise<Response> =>
     fetch(`/api${path}`, {
@@ -50,9 +59,8 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const refreshed = await refreshSession();
     if (refreshed) {
       response = await request();
-    } else if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-      const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-      window.location.assign(`/login?next=${next}`);
+    } else {
+      notifySessionExpired();
       throw new Error('Session expired');
     }
   }
