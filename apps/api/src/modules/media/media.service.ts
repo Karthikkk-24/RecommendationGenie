@@ -227,35 +227,44 @@ export class MediaService {
   }
 
   private async syncTaxonomy(mediaItemId: string, input: NormalizedMedia): Promise<void> {
-    await this.prisma.client.mediaGenreLink.deleteMany({ where: { mediaItemId } });
-    await this.prisma.client.mediaTagLink.deleteMany({ where: { mediaItemId } });
-    await this.prisma.client.mediaPersonLink.deleteMany({ where: { mediaItemId } });
+    // Never wipe existing links when the provider payload has empty taxonomy
+    // (e.g. TMDB search without details). Only replace dimensions we actually received.
+    if (input.genres.length > 0) {
+      await this.prisma.client.mediaGenreLink.deleteMany({ where: { mediaItemId } });
+      for (const genre of input.genres) {
+        const row = await this.prisma.client.mediaGenre.upsert({
+          where: { slug: slugify(genre) },
+          update: { name: genre },
+          create: { slug: slugify(genre), name: genre },
+        });
+        await this.prisma.client.mediaGenreLink.create({ data: { mediaItemId, genreId: row.id } });
+      }
+    }
 
-    for (const genre of input.genres) {
-      const row = await this.prisma.client.mediaGenre.upsert({
-        where: { slug: slugify(genre) },
-        update: { name: genre },
-        create: { slug: slugify(genre), name: genre },
-      });
-      await this.prisma.client.mediaGenreLink.create({ data: { mediaItemId, genreId: row.id } });
+    if (input.tags.length > 0) {
+      await this.prisma.client.mediaTagLink.deleteMany({ where: { mediaItemId } });
+      for (const tag of input.tags) {
+        const row = await this.prisma.client.mediaTag.upsert({
+          where: { slug: slugify(tag) },
+          update: { name: tag },
+          create: { slug: slugify(tag), name: tag },
+        });
+        await this.prisma.client.mediaTagLink.create({ data: { mediaItemId, tagId: row.id } });
+      }
     }
-    for (const tag of input.tags) {
-      const row = await this.prisma.client.mediaTag.upsert({
-        where: { slug: slugify(tag) },
-        update: { name: tag },
-        create: { slug: slugify(tag), name: tag },
-      });
-      await this.prisma.client.mediaTagLink.create({ data: { mediaItemId, tagId: row.id } });
-    }
-    for (const person of input.people) {
-      const row = await this.prisma.client.mediaPerson.upsert({
-        where: { slug: slugify(person.name) },
-        update: { name: person.name },
-        create: { slug: slugify(person.name), name: person.name },
-      });
-      await this.prisma.client.mediaPersonLink.create({
-        data: { mediaItemId, personId: row.id, role: person.role },
-      });
+
+    if (input.people.length > 0) {
+      await this.prisma.client.mediaPersonLink.deleteMany({ where: { mediaItemId } });
+      for (const person of input.people) {
+        const row = await this.prisma.client.mediaPerson.upsert({
+          where: { slug: slugify(person.name) },
+          update: { name: person.name },
+          create: { slug: slugify(person.name), name: person.name },
+        });
+        await this.prisma.client.mediaPersonLink.create({
+          data: { mediaItemId, personId: row.id, role: person.role },
+        });
+      }
     }
   }
 }
