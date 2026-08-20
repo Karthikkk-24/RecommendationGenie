@@ -43,10 +43,14 @@ export class MediaService {
       return cached;
     }
 
+    const fuzzyIds = await this.fuzzyTitleIds(query, mediaType, pageSize * page);
     const dbResults = await this.prisma.client.mediaItem.findMany({
       where: {
         ...(mediaType ? { type: mediaType } : {}),
-        title: { contains: query, mode: 'insensitive' },
+        OR: [
+          { title: { contains: query, mode: 'insensitive' } },
+          ...(fuzzyIds.length ? [{ id: { in: fuzzyIds } }] : []),
+        ],
       },
       include: this.cardInclude(),
       skip: (page - 1) * pageSize,
@@ -209,10 +213,14 @@ export class MediaService {
   }
 
   private async groupSearch(query: string, mediaType?: MediaType) {
+    const fuzzyIds = await this.fuzzyTitleIds(query, mediaType, 40);
     const items = await this.prisma.client.mediaItem.findMany({
       where: {
         ...(mediaType ? { type: mediaType } : {}),
-        title: { contains: query, mode: 'insensitive' },
+        OR: [
+          { title: { contains: query, mode: 'insensitive' } },
+          ...(fuzzyIds.length ? [{ id: { in: fuzzyIds } }] : []),
+        ],
       },
       include: this.cardInclude(),
       take: 40,
@@ -224,6 +232,40 @@ export class MediaService {
       games: cards.filter((item) => item.type === 'GAME'),
       music: cards.filter((item) => item.type === 'MUSIC'),
     };
+  }
+
+  /** pg_trgm fuzzy title matches (typos / near-misses). Falls back to [] if extension unavailable. */
+  private async fuzzyTitleIds(query: string, mediaType: MediaType | undefined, limit: number): Promise<string[]> {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      return [];
+    }
+    try {
+      const rows = mediaType
+        ? await this.prisma.client.$queryRawUnsafe<Array<{ id: string }>>(
+            `SELECT id
+             FROM "MediaItem"
+             WHERE type = $1::"MediaType"
+               AND similarity(title, $2) > 0.25
+             ORDER BY similarity(title, $2) DESC, popularity DESC
+             LIMIT $3`,
+            mediaType,
+            trimmed,
+            limit,
+          )
+        : await this.prisma.client.$queryRawUnsafe<Array<{ id: string }>>(
+            `SELECT id
+             FROM "MediaItem"
+             WHERE similarity(title, $1) > 0.25
+             ORDER BY similarity(title, $1) DESC, popularity DESC
+             LIMIT $2`,
+            trimmed,
+            limit,
+          );
+      return rows.map((row) => row.id);
+    } catch {
+      return [];
+    }
   }
 
   private async syncTaxonomy(mediaItemId: string, input: NormalizedMedia): Promise<void> {
