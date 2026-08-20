@@ -51,16 +51,21 @@ export class RecommendationService {
     const mediaTypeWeights = new Map(
       features.filter((f) => f.featureType === 'MEDIA_TYPE').map((f) => [f.featureKey, f.weight]),
     );
+    const pacingWeights = new Map(
+      features.filter((f) => f.featureType === 'PACING').map((f) => [f.featureKey, f.weight]),
+    );
 
     const scored = items.map((item) => {
       const genres = item.genres.map((g) => g.genre.name);
       const tags = item.tags.map((t) => t.tag.name);
       const creators = item.people.map((p) => p.person.name);
       const themeKeys = [...genres, ...tags];
+      const pacingKeys = this.pacingKeys(item.pacing);
       const content = this.avg([
         this.featureScore(genres, genreWeights),
         this.featureScore(tags, tagWeights),
         this.featureScore(themeKeys, themeWeights),
+        this.featureScore(pacingKeys, pacingWeights),
       ]);
       const tasteParts = [
         1 - Math.abs(item.complexity - profile.complexity) / 2,
@@ -69,6 +74,7 @@ export class RecommendationService {
         this.featureScore(genres, genreWeights),
         this.featureScore(themeKeys, themeWeights),
         this.featureScore([item.type], mediaTypeWeights),
+        this.featureScore(pacingKeys, pacingWeights),
       ];
       if (input.mood) {
         tasteParts.push(
@@ -333,6 +339,16 @@ export class RecommendationService {
     }
 
     return blocked;
+  }
+
+  private pacingKeys(pacing: number): string[] {
+    if (pacing <= -0.25) {
+      return ['slow'];
+    }
+    if (pacing >= 0.25) {
+      return ['fast'];
+    }
+    return ['medium'];
   }
 
   private featureScore(keys: string[], weights: Map<string, number>): number {

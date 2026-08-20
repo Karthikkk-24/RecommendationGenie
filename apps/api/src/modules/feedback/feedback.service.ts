@@ -41,6 +41,16 @@ export class FeedbackService {
       recommendationItemId: dto.recommendationItemId,
     });
 
+    if (dto.action === 'NEVER_THIS_TYPE') {
+      const media = await this.prisma.client.mediaItem.findUnique({
+        where: { id: dto.mediaItemId },
+        select: { type: true },
+      });
+      if (media) {
+        await this.taste.applyMediaTypeBan(userId, media.type);
+      }
+    }
+
     if (dto.reason) {
       await this.taste.applyFeedbackReason(userId, dto.mediaItemId, dto.reason);
     }
