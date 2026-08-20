@@ -2,51 +2,169 @@
 
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../components/media/media-card';
+import { RatingControl } from '../../components/media/rating-control';
 import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/card';
 import { api } from '../../lib/utils';
 
-const steps = ['Types', 'Loves', 'Ratings', 'Preferences', 'Taste', 'Recommendations', 'Calibrate'];
+const steps = ['Types', 'Loves', 'Ratings', 'Preferences', 'Taste', 'Recommendations', 'Calibrate'] as const;
 const genres = ['sci-fi', 'thriller', 'drama', 'comedy', 'romance', 'horror', 'indie', 'synthwave'];
+const themes = ['psychological', 'found-family', 'heist', 'coming-of-age', 'mystery', 'retro'];
+
+type OnboardingState = {
+  onboardingStatus?: string;
+  preference?: {
+    enabledMediaTypes?: string[];
+    favoriteGenres?: string[];
+    dislikedGenres?: string[];
+    preferredThemes?: string[];
+    preferredPacing?: number | null;
+    preferredComplexity?: number | null;
+  } | null;
+  popular: MediaCardData[];
+};
+
+type RecPreview = {
+  items: Array<{
+    id: string;
+    explanation?: string;
+    scores: { final: number };
+    media: MediaCardData;
+  }>;
+};
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [types, setTypes] = useState<string[]>(['MOVIE', 'GAME', 'MUSIC']);
   const [selected, setSelected] = useState<string[]>([]);
+  const [ratings, setRatings] = useState<Record<string, number>>({});
   const [favoriteGenres, setFavoriteGenres] = useState<string[]>(['sci-fi', 'thriller']);
+  const [dislikedGenres, setDislikedGenres] = useState<string[]>([]);
+  const [preferredThemes, setPreferredThemes] = useState<string[]>(['psychological']);
   const [complexity, setComplexity] = useState(0.4);
   const [pacing, setPacing] = useState(0.2);
+  const [hydrated, setHydrated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<RecPreview | null>(null);
+  const [calibrateFeedback, setCalibrateFeedback] = useState<string | null>(null);
+
   const state = useQuery({
     queryKey: ['onboarding'],
-    queryFn: () => api<{ popular: MediaCardData[] }>('/onboarding'),
+    queryFn: () => api<OnboardingState>('/onboarding'),
   });
 
-  const complete = useMutation({
-    mutationFn: async () => {
-      await api('/onboarding/types', { method: 'POST', body: JSON.stringify({ mediaTypes: types }) });
-      await api('/onboarding/selections', { method: 'POST', body: JSON.stringify({ mediaItemIds: selected }) });
-      await api('/onboarding/ratings', {
-        method: 'POST',
-        body: JSON.stringify({ ratings: selected.map((id) => ({ mediaItemId: id, rating: 5 })) }),
-      });
-      await api('/onboarding/preferences', {
-        method: 'POST',
-        body: JSON.stringify({
-          favoriteGenres,
-          dislikedGenres: genres.filter((genre) => !favoriteGenres.includes(genre)).slice(0, 2),
-          preferredThemes: ['psychological'],
-          preferredComplexity: complexity,
-          preferredPacing: pacing,
-        }),
-      });
-      await api('/onboarding/complete', { method: 'POST' });
-    },
-    onSuccess: () => router.push('/app'),
-  });
+  useEffect(() => {
+    if (!state.data || hydrated) {
+      return;
+    }
+    if (state.data.onboardingStatus === 'COMPLETED') {
+      router.replace('/app');
+      return;
+    }
+    const pref = state.data.preference;
+    if (pref?.enabledMediaTypes?.length) {
+      setTypes(pref.enabledMediaTypes);
+      setStep(1);
+    }
+    if (pref?.favoriteGenres?.length) {
+      setFavoriteGenres(pref.favoriteGenres);
+    }
+    if (pref?.dislikedGenres?.length) {
+      setDislikedGenres(pref.dislikedGenres);
+    }
+    if (pref?.preferredThemes?.length) {
+      setPreferredThemes(pref.preferredThemes);
+    }
+    if (typeof pref?.preferredComplexity === 'number') {
+      setComplexity(pref.preferredComplexity);
+    }
+    if (typeof pref?.preferredPacing === 'number') {
+      setPacing(pref.preferredPacing);
+    }
+    setHydrated(true);
+  }, [state.data, hydrated, router]);
 
   const popular = state.data?.popular ?? [];
+
+  const advance = useMutation({
+    mutationFn: async (fromStep: number) => {
+      setError(null);
+      if (fromStep === 0) {
+        if (types.length === 0) {
+          throw new Error('Pick at least one media type.');
+        }
+        await api('/onboarding/types', { method: 'POST', body: JSON.stringify({ mediaTypes: types }) });
+        return;
+      }
+      if (fromStep === 1) {
+        if (selected.length === 0) {
+          throw new Error('Pick at least one title you love.');
+        }
+        await api('/onboarding/selections', {
+          method: 'POST',
+          body: JSON.stringify({ mediaItemIds: selected }),
+        });
+        return;
+      }
+      if (fromStep === 2) {
+        const payload = selected.map((id) => ({
+          mediaItemId: id,
+          rating: ratings[id] ?? 5,
+        }));
+        await api('/onboarding/ratings', { method: 'POST', body: JSON.stringify({ ratings: payload }) });
+        return;
+      }
+      if (fromStep === 3) {
+        if (favoriteGenres.length === 0) {
+          throw new Error('Pick at least one favorite genre.');
+        }
+        await api('/onboarding/preferences', {
+          method: 'POST',
+          body: JSON.stringify({
+            favoriteGenres,
+            dislikedGenres,
+            preferredThemes,
+            preferredComplexity: complexity,
+            preferredPacing: pacing,
+          }),
+        });
+        return;
+      }
+      if (fromStep === 4) {
+        // Taste sliders already included in preferences; re-post so pacing/complexity stick.
+        await api('/onboarding/preferences', {
+          method: 'POST',
+          body: JSON.stringify({
+            favoriteGenres,
+            dislikedGenres,
+            preferredThemes,
+            preferredComplexity: complexity,
+            preferredPacing: pacing,
+          }),
+        });
+        return;
+      }
+      if (fromStep === 5) {
+        const batch = await api<RecPreview>('/onboarding/complete', { method: 'POST' });
+        setPreview(batch);
+      }
+    },
+    onSuccess: (_data, fromStep) => {
+      if (fromStep < 5) {
+        setStep((value) => value + 1);
+      }
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    },
+  });
+
+  const finish = () => {
+    router.push('/app/recommendations');
+  };
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
@@ -54,8 +172,9 @@ export default function OnboardingPage() {
         Step {step + 1} · {steps[step]}
       </p>
       <h1 className="mt-3 font-serif text-4xl">Tell Genie what you love</h1>
+
       {step === 0 ? (
-        <div className="mt-8 flex gap-3">
+        <div className="mt-8 flex flex-wrap gap-3">
           {['MOVIE', 'GAME', 'MUSIC'].map((type) => (
             <button
               key={type}
@@ -72,46 +191,131 @@ export default function OnboardingPage() {
           ))}
         </div>
       ) : null}
-      {step >= 1 && step <= 2 ? (
-        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          {popular.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() =>
-                setSelected((current) =>
-                  current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id],
-                )
-              }
-              className={selected.includes(item.id) ? 'ring-2 ring-[var(--gold)] rounded-2xl' : ''}
-            >
-              <MediaCard item={item} />
-            </button>
-          ))}
+
+      {step === 1 ? (
+        <div className="mt-8">
+          {popular.length === 0 ? (
+            <Card>
+              <p className="text-sm text-[var(--muted)]">
+                No popular titles are available yet. Seed the catalog or try again later — you can still continue after
+                picking preferences.
+              </p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {popular.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() =>
+                    setSelected((current) =>
+                      current.includes(item.id)
+                        ? current.filter((id) => id !== item.id)
+                        : [...current, item.id],
+                    )
+                  }
+                  className={selected.includes(item.id) ? 'rounded-2xl ring-2 ring-[var(--gold)]' : ''}
+                >
+                  <MediaCard item={item} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
+
+      {step === 2 ? (
+        <div className="mt-8 space-y-4">
+          {selected.length === 0 ? (
+            <p className="text-sm text-[var(--muted)]">Go back and pick a few loves to rate.</p>
+          ) : (
+            selected.map((id) => {
+              const item = popular.find((row) => row.id === id);
+              return (
+                <Card key={id} className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="font-medium">{item?.title ?? id}</p>
+                    <p className="text-xs text-[var(--muted)]">{item?.type}</p>
+                  </div>
+                  <RatingControl
+                    value={ratings[id] ?? 5}
+                    onChange={(value) => setRatings((current) => ({ ...current, [id]: value }))}
+                  />
+                </Card>
+              );
+            })
+          )}
+        </div>
+      ) : null}
+
       {step === 3 ? (
-        <div className="mt-8 flex flex-wrap gap-3">
-          {genres.map((genre) => (
-            <button
-              key={genre}
-              type="button"
-              onClick={() =>
-                setFavoriteGenres((current) =>
-                  current.includes(genre) ? current.filter((item) => item !== genre) : [...current, genre],
-                )
-              }
-              className={`rounded-full border px-4 py-2 ${favoriteGenres.includes(genre) ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
-            >
-              {genre}
-            </button>
-          ))}
+        <div className="mt-8 space-y-8">
+          <div>
+            <p className="mb-3 text-sm text-[var(--muted)]">Favorite genres</p>
+            <div className="flex flex-wrap gap-3">
+              {genres.map((genre) => (
+                <button
+                  key={`fav-${genre}`}
+                  type="button"
+                  onClick={() => {
+                    setFavoriteGenres((current) =>
+                      current.includes(genre) ? current.filter((item) => item !== genre) : [...current, genre],
+                    );
+                    setDislikedGenres((current) => current.filter((item) => item !== genre));
+                  }}
+                  className={`rounded-full border px-4 py-2 ${favoriteGenres.includes(genre) ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-3 text-sm text-[var(--muted)]">Disliked genres</p>
+            <div className="flex flex-wrap gap-3">
+              {genres.map((genre) => (
+                <button
+                  key={`dis-${genre}`}
+                  type="button"
+                  onClick={() => {
+                    setDislikedGenres((current) =>
+                      current.includes(genre) ? current.filter((item) => item !== genre) : [...current, genre],
+                    );
+                    setFavoriteGenres((current) => current.filter((item) => item !== genre));
+                  }}
+                  className={`rounded-full border px-4 py-2 ${dislikedGenres.includes(genre) ? 'border-red-400 text-red-400' : 'border-[var(--line)]'}`}
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-3 text-sm text-[var(--muted)]">Themes</p>
+            <div className="flex flex-wrap gap-3">
+              {themes.map((theme) => (
+                <button
+                  key={theme}
+                  type="button"
+                  onClick={() =>
+                    setPreferredThemes((current) =>
+                      current.includes(theme) ? current.filter((item) => item !== theme) : [...current, theme],
+                    )
+                  }
+                  className={`rounded-full border px-4 py-2 ${preferredThemes.includes(theme) ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
+                >
+                  {theme}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       ) : null}
+
       {step === 4 ? (
         <div className="mt-8 max-w-xl space-y-6 text-sm text-[var(--muted)]">
           <label className="block">
-            Complexity
+            Complexity ({complexity.toFixed(1)})
             <input
               type="range"
               min={-1}
@@ -123,7 +327,7 @@ export default function OnboardingPage() {
             />
           </label>
           <label className="block">
-            Pacing
+            Pacing ({pacing.toFixed(1)})
             <input
               type="range"
               min={-1}
@@ -136,27 +340,81 @@ export default function OnboardingPage() {
           </label>
         </div>
       ) : null}
-      {step >= 5 ? (
-        <p className="mt-8 max-w-xl text-[var(--muted)]">
-          Genie will seed complexity, darkness, and genre weights from your picks, then generate the first batch. Later
-          feedback updates those weights — Genie never invents titles.
-        </p>
+
+      {step === 5 ? (
+        <div className="mt-8 max-w-2xl space-y-4">
+          <p className="text-[var(--muted)]">
+            Next, Genie seeds your taste profile and generates a first batch. Continue to create that preview.
+          </p>
+          {preview ? (
+            <div className="space-y-3">
+              {preview.items.slice(0, 5).map((item) => (
+                <Card key={item.id} className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-medium">{item.media.title}</p>
+                    <p className="text-xs text-[var(--muted)]">{item.explanation}</p>
+                  </div>
+                  <span className="text-sm text-[var(--gold)]">{Math.round(item.scores.final * 100)}%</span>
+                </Card>
+              ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
+
+      {step === 6 ? (
+        <div className="mt-8 max-w-2xl space-y-4">
+          <p className="text-[var(--muted)]">
+            Quick calibrate: tell Genie if this first batch feels right. You can refine forever from For You.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {['Too safe', 'Just right', 'Too weird'].map((label) => (
+              <Button
+                key={label}
+                type="button"
+                variant={calibrateFeedback === label ? undefined : 'ghost'}
+                onClick={() => setCalibrateFeedback(label)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          {calibrateFeedback ? (
+            <p className="text-sm text-[var(--muted)]">
+              Noted as “{calibrateFeedback}”. Feedback on individual titles will keep tuning Genie.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {error ? <p className="mt-6 text-sm text-red-400">{error}</p> : null}
+
       <div className="mt-10 flex gap-3">
-        {step > 0 ? (
+        {step > 0 && step < 6 ? (
           <Button type="button" variant="ghost" onClick={() => setStep((value) => value - 1)}>
             Back
           </Button>
         ) : null}
-        {step < 6 ? (
-          <Button type="button" onClick={() => setStep((value) => value + 1)}>
-            Continue
+        {step < 5 ? (
+          <Button type="button" onClick={() => advance.mutate(step)} disabled={advance.isPending}>
+            {advance.isPending ? 'Saving…' : 'Continue'}
           </Button>
-        ) : (
-          <Button type="button" onClick={() => complete.mutate()}>
-            Generate my first recommendations
+        ) : null}
+        {step === 5 ? (
+          <Button type="button" onClick={() => advance.mutate(5)} disabled={advance.isPending || Boolean(preview)}>
+            {advance.isPending ? 'Generating…' : preview ? 'Preview ready' : 'Generate preview'}
           </Button>
-        )}
+        ) : null}
+        {step === 5 && preview ? (
+          <Button type="button" onClick={() => setStep(6)}>
+            Continue to calibrate
+          </Button>
+        ) : null}
+        {step === 6 ? (
+          <Button type="button" onClick={finish}>
+            Open For You
+          </Button>
+        ) : null}
       </div>
     </main>
   );
