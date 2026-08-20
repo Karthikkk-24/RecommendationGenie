@@ -1,5 +1,6 @@
 import { patchesFromFeedbackReason } from '../../taste/taste-algorithm';
 import type { NormalizedMedia } from './media-provider';
+import { tmdbGenresFromRow } from './tmdb.provider';
 
 describe('provider contract', () => {
   it('keeps adapter output inside NormalizedMedia fields', () => {
@@ -25,6 +26,21 @@ describe('provider contract', () => {
     };
     expect(Object.keys(item)).not.toContain('rawTmdb');
     expect(item.provider).toBe('mock');
+  });
+});
+
+describe('tmdb genre extraction', () => {
+  it('maps search genre_ids to names', () => {
+    expect(tmdbGenresFromRow({ genre_ids: [878, 53] })).toEqual(['sci-fi', 'thriller']);
+  });
+
+  it('prefers details genres when present', () => {
+    expect(
+      tmdbGenresFromRow({
+        genres: [{ id: 18, name: 'Drama' }],
+        genre_ids: [878],
+      }),
+    ).toEqual(['drama']);
   });
 });
 

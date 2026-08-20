@@ -3,6 +3,43 @@ import { ConfigService } from '@nestjs/config';
 import type { MediaType } from '@recommendation-genie/types';
 import type { MediaProvider, NormalizedMedia, ProviderQuery } from './media-provider';
 
+/** TMDB search results expose genre_ids; details expose genres[{id,name}]. */
+export const TMDB_MOVIE_GENRES: Record<number, string> = {
+  28: 'action',
+  12: 'adventure',
+  16: 'animation',
+  35: 'comedy',
+  80: 'crime',
+  99: 'documentary',
+  18: 'drama',
+  10751: 'family',
+  14: 'fantasy',
+  36: 'history',
+  27: 'horror',
+  10402: 'music',
+  9648: 'mystery',
+  10749: 'romance',
+  878: 'sci-fi',
+  10770: 'tv-movie',
+  53: 'thriller',
+  10752: 'war',
+  37: 'western',
+};
+
+export function tmdbGenresFromRow(row: Record<string, unknown>): string[] {
+  if (Array.isArray(row.genres) && row.genres.length > 0) {
+    return row.genres
+      .map((g: { name?: string }) => (typeof g?.name === 'string' ? g.name.toLowerCase() : null))
+      .filter((name): name is string => Boolean(name));
+  }
+  if (Array.isArray(row.genre_ids)) {
+    return row.genre_ids
+      .map((id: unknown) => (typeof id === 'number' ? TMDB_MOVIE_GENRES[id] : undefined))
+      .filter((name): name is string => Boolean(name));
+  }
+  return [];
+}
+
 @Injectable()
 export class TmdbMovieProvider implements MediaProvider {
   readonly id = 'tmdb';
@@ -63,7 +100,7 @@ export class TmdbMovieProvider implements MediaProvider {
       complexity: 0,
       darkness: 0,
       emotionalIntensity: 0,
-      genres: Array.isArray(row.genres) ? row.genres.map((g: { name: string }) => g.name.toLowerCase()) : [],
+      genres: tmdbGenresFromRow(row),
       tags: [],
       people: [],
     };
