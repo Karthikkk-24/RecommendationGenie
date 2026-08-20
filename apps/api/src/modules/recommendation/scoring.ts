@@ -1,5 +1,5 @@
 import { PIPELINE, SCORING_WEIGHTS } from '@recommendation-genie/config';
-import type { RecommendationMode, ScoringWeights } from '@recommendation-genie/types';
+import type { Mood, RecommendationMode, ScoringWeights } from '@recommendation-genie/types';
 
 export type ScoredCandidate = {
   mediaId: string;
@@ -31,6 +31,37 @@ export function weightsForMode(mode: RecommendationMode, base: ScoringWeights = 
     default:
       return base;
   }
+}
+
+/** 0–1 alignment of media scalars to a requested mood (used in MOOD mode scoring). */
+export function moodAlignment(
+  mood: Mood,
+  item: { darkness: number; pacing: number; emotionalIntensity: number; complexity: number },
+): number {
+  switch (mood) {
+    case 'CHILL':
+      return clamp01(1 - Math.max(item.pacing, 0) - Math.max(item.emotionalIntensity, 0) * 0.5);
+    case 'ADRENALINE':
+      return clamp01((item.pacing + 1) / 2);
+    case 'EMOTIONAL':
+      return clamp01((item.emotionalIntensity + 1) / 2);
+    case 'DARK':
+      return clamp01((item.darkness + 1) / 2);
+    case 'FUNNY':
+      return clamp01(1 - Math.max(item.darkness, 0));
+    case 'MIND_BENDING':
+      return clamp01((item.complexity + 1) / 2);
+    case 'RELAXING':
+      return clamp01(1 - Math.max(item.pacing, -0.2) - Math.max(item.darkness, 0) * 0.5);
+    case 'INTENSE':
+      return clamp01(((item.emotionalIntensity + item.pacing) / 2 + 1) / 2);
+    default:
+      return 0.5;
+  }
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }
 
 export function combineScores(

@@ -8,7 +8,7 @@ import { AiService } from '../ai/ai.service';
 import { MediaService } from '../media/media.service';
 import { TasteService } from '../taste/taste.service';
 import { CandidateGenerationService } from './candidate-generation.service';
-import { combineScores, mmrSelect, normalize01, weightsForMode } from './scoring';
+import { combineScores, mmrSelect, moodAlignment, normalize01, weightsForMode } from './scoring';
 
 @Injectable()
 export class RecommendationService {
@@ -62,19 +62,33 @@ export class RecommendationService {
         this.featureScore(tags, tagWeights),
         this.featureScore(themeKeys, themeWeights),
       ]);
-      const tasteScore = this.avg([
+      const tasteParts = [
         1 - Math.abs(item.complexity - profile.complexity) / 2,
         1 - Math.abs(item.darkness - profile.darkness) / 2,
         1 - Math.abs(item.pacing - profile.pacing) / 2,
         this.featureScore(genres, genreWeights),
         this.featureScore(themeKeys, themeWeights),
         this.featureScore([item.type], mediaTypeWeights),
-      ]);
+      ];
+      if (input.mood) {
+        tasteParts.push(
+          moodAlignment(input.mood, {
+            darkness: item.darkness,
+            pacing: item.pacing,
+            emotionalIntensity: item.emotionalIntensity,
+            complexity: item.complexity,
+          }),
+        );
+      }
+      const tasteScore = this.avg(tasteParts);
       const feedback = this.featureScore([...tags, ...themeKeys], new Map([...tagWeights, ...themeWeights]));
       const creator = this.featureScore(creators, creatorWeights);
       const quality = item.qualityScore;
       const novelty = 1 - item.popularity;
-      const exploration = input.mode === 'SURPRISE_ME' ? novelty : novelty * PIPELINE.explorationRatio;
+      const exploration =
+        input.mode === 'SURPRISE_ME' || input.mode === 'DEEP_CUTS'
+          ? novelty
+          : novelty * PIPELINE.explorationRatio;
       const parts = {
         content: normalize01(content),
         taste: normalize01(tasteScore, 0, 1),
