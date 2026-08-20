@@ -24,16 +24,42 @@ export class AnalyticsService {
   }
 
   async overview(userId: string) {
-    const events = await this.prisma.client.analyticsEvent.findMany({
-      where: { userId },
-    });
-    const count = (name: string) => events.filter((event: { eventName: string }) => event.eventName === name).length;
-    const likes = count('interaction.like') + count('interaction.love');
-    const dislikes = count('interaction.dislike');
-    const saves = count('interaction.save');
-    const skips = count('interaction.skip');
-    const impressions = events.filter((event: { eventName: string }) => event.eventName.startsWith('recommendation.')).length;
+    const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30);
+
+    const [likeEvents, loveEvents, dislikeEvents, saveEvents, skipEvents, viewEvents, itemImpressions] =
+      await Promise.all([
+        this.prisma.client.analyticsEvent.count({
+          where: { userId, eventName: 'interaction.like', createdAt: { gte: since } },
+        }),
+        this.prisma.client.analyticsEvent.count({
+          where: { userId, eventName: 'interaction.love', createdAt: { gte: since } },
+        }),
+        this.prisma.client.analyticsEvent.count({
+          where: { userId, eventName: 'interaction.dislike', createdAt: { gte: since } },
+        }),
+        this.prisma.client.analyticsEvent.count({
+          where: { userId, eventName: 'interaction.save', createdAt: { gte: since } },
+        }),
+        this.prisma.client.analyticsEvent.count({
+          where: { userId, eventName: 'interaction.skip', createdAt: { gte: since } },
+        }),
+        this.prisma.client.analyticsEvent.count({
+          where: { userId, eventName: 'interaction.view', createdAt: { gte: since } },
+        }),
+        // Per-item impressions from stored recommendation rows (not generation events).
+        this.prisma.client.recommendationItem.count({
+          where: { generation: { userId, createdAt: { gte: since } } },
+        }),
+      ]);
+
+    const likes = likeEvents + loveEvents;
+    const dislikes = dislikeEvents;
+    const saves = saveEvents;
+    const skips = skipEvents;
+    const impressions = Math.max(itemImpressions, viewEvents);
+
     return {
+      windowDays: 30,
       likeRate: this.rate(likes, likes + dislikes),
       dislikeRate: this.rate(dislikes, likes + dislikes),
       saveRate: this.rate(saves, impressions || 1),
