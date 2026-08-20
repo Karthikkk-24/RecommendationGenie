@@ -170,7 +170,11 @@ export class AuthService {
         expiresAt: new Date(Date.now() + AUTH.refreshTokenTtlSeconds * 1000),
       },
     });
-    return { accessToken, refreshToken, user: { id: userId, email, role } };
+    const user = await this.prisma.client.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { id: true, email: true, role: true, onboardingStatus: true },
+    });
+    return { accessToken, refreshToken, user };
   }
 
   private async issueEmailToken(userId: string, purpose: 'VERIFY_EMAIL' | 'RESET_PASSWORD'): Promise<string> {
