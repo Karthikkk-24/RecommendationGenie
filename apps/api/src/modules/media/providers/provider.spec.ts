@@ -1,4 +1,5 @@
 import { patchesFromFeedbackReason } from '../../taste/taste-algorithm';
+import { inferTasteScalars } from './infer-taste-scalars';
 import type { NormalizedMedia } from './media-provider';
 import { tmdbGenresFromRow } from './tmdb.provider';
 
@@ -41,6 +42,19 @@ describe('tmdb genre extraction', () => {
         genre_ids: [878],
       }),
     ).toEqual(['drama']);
+  });
+});
+
+describe('inferTasteScalars', () => {
+  it('derives non-zero dims from horror/thriller genres', () => {
+    const scalars = inferTasteScalars({
+      type: 'MOVIE',
+      genres: ['horror', 'thriller'],
+      description: 'A dark intense night',
+    });
+    expect(scalars.darkness).toBeGreaterThan(0);
+    expect(scalars.pacing).toBeGreaterThan(0);
+    expect(scalars.emotionalIntensity).toBeGreaterThan(0);
   });
 });
 

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { MediaType } from '@recommendation-genie/types';
 import type { MediaProvider, NormalizedMedia, ProviderQuery } from './media-provider';
+import { inferTasteScalars } from './infer-taste-scalars';
 
 /** TMDB search results expose genre_ids; details expose genres[{id,name}]. */
 export const TMDB_MOVIE_GENRES: Record<number, string> = {
@@ -84,23 +85,23 @@ export class TmdbMovieProvider implements MediaProvider {
   }
 
   private normalize(row: Record<string, unknown>): NormalizedMedia {
+    const genres = tmdbGenresFromRow(row);
+    const description = typeof row.overview === 'string' ? row.overview : null;
+    const scalars = inferTasteScalars({ type: 'MOVIE', genres, description });
     return {
       provider: 'tmdb',
       externalId: String(row.id),
       type: 'MOVIE',
       title: String(row.title ?? row.name ?? 'Untitled'),
-      description: typeof row.overview === 'string' ? row.overview : null,
+      description,
       releaseDate: row.release_date ? new Date(String(row.release_date)) : null,
       language: typeof row.original_language === 'string' ? row.original_language : null,
       runtimeMinutes: typeof row.runtime === 'number' ? row.runtime : null,
       posterUrl: row.poster_path ? `https://image.tmdb.org/t/p/w500${row.poster_path}` : null,
       popularity: typeof row.popularity === 'number' ? Math.min(1, row.popularity / 200) : 0.3,
       qualityScore: typeof row.vote_average === 'number' ? row.vote_average / 10 : 0.5,
-      pacing: 0,
-      complexity: 0,
-      darkness: 0,
-      emotionalIntensity: 0,
-      genres: tmdbGenresFromRow(row),
+      ...scalars,
+      genres,
       tags: [],
       people: [],
     };

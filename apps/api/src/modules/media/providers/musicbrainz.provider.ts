@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { MediaType } from '@recommendation-genie/types';
 import type { MediaProvider, NormalizedMedia, ProviderQuery } from './media-provider';
+import { inferTasteScalars } from './infer-taste-scalars';
 
 @Injectable()
 export class MusicBrainzProvider implements MediaProvider {
@@ -47,6 +48,8 @@ export class MusicBrainzProvider implements MediaProvider {
   private normalize(row: Record<string, unknown>): NormalizedMedia {
     const artistCredit = Array.isArray(row['artist-credit']) ? row['artist-credit'] : [];
     const tags = Array.isArray(row.tags) ? row.tags.map((t: { name: string }) => t.name) : [];
+    const genres = tags.slice(0, 4);
+    const scalars = inferTasteScalars({ type: 'MUSIC', genres, tags });
     return {
       provider: 'musicbrainz',
       externalId: String(row.id),
@@ -59,11 +62,8 @@ export class MusicBrainzProvider implements MediaProvider {
       posterUrl: null,
       popularity: 0.2,
       qualityScore: 0.6,
-      pacing: 0,
-      complexity: 0,
-      darkness: 0,
-      emotionalIntensity: 0,
-      genres: tags.slice(0, 4),
+      ...scalars,
+      genres,
       tags,
       people: artistCredit
         .map((credit: { name?: string; artist?: { name?: string } }) => credit.artist?.name ?? credit.name)
