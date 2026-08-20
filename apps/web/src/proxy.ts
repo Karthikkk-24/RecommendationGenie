@@ -13,7 +13,9 @@ const publicPaths = [
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublic = publicPaths.includes(pathname) || pathname.startsWith('/media/');
-  const hasSession = Boolean(request.cookies.get('rg_access') ?? request.cookies.get('rg_refresh'));
+  const hasAccess = Boolean(request.cookies.get('rg_access'));
+  const hasRefresh = Boolean(request.cookies.get('rg_refresh'));
+  const hasSession = hasAccess || hasRefresh;
 
   if (!isPublic && !hasSession && (pathname.startsWith('/app') || pathname.startsWith('/onboarding'))) {
     const login = new URL('/login', request.url);
@@ -21,7 +23,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (hasSession && (pathname === '/login' || pathname === '/register')) {
+  // Only treat a live access cookie as a full session for auth pages so an
+  // expired access + leftover refresh cookie cannot trap users off /login.
+  if (hasAccess && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL('/app', request.url));
   }
 
