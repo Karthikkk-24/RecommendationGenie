@@ -11,6 +11,7 @@ const links = [
   { href: '/app/search', label: 'Search' },
   { href: '/app/history', label: 'History' },
   { href: '/app/analytics', label: 'Analytics' },
+  { href: '/app/admin', label: 'Admin' },
   { href: '/app/settings', label: 'Settings' },
 ];
 

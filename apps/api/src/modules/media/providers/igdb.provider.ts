@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { MediaType } from '@recommendation-genie/types';
 import type { MediaProvider, NormalizedMedia, ProviderQuery } from './media-provider';
+import { inferTasteScalars } from './infer-taste-scalars';
 
 @Injectable()
 export class IgdbGameProvider implements MediaProvider {
@@ -79,22 +80,21 @@ export class IgdbGameProvider implements MediaProvider {
     const companies = Array.isArray(row.involved_companies)
       ? row.involved_companies.map((c: { company?: { name?: string } }) => c.company?.name).filter(Boolean)
       : [];
+    const description = typeof row.summary === 'string' ? row.summary : null;
+    const scalars = inferTasteScalars({ type: 'GAME', genres, description });
     return {
       provider: 'igdb',
       externalId: String(row.id),
       type: 'GAME',
       title: String(row.name ?? 'Untitled'),
-      description: typeof row.summary === 'string' ? row.summary : null,
+      description,
       releaseDate: typeof row.first_release_date === 'number' ? new Date(row.first_release_date * 1000) : null,
       language: 'en',
       runtimeMinutes: null,
       posterUrl: cover?.url ? `https:${cover.url.replace('t_thumb', 't_cover_big')}` : null,
       popularity: typeof row.rating === 'number' ? row.rating / 100 : 0.3,
       qualityScore: typeof row.aggregated_rating === 'number' ? row.aggregated_rating / 100 : 0.5,
-      pacing: 0,
-      complexity: 0,
-      darkness: 0,
-      emotionalIntensity: 0,
+      ...scalars,
       genres,
       tags: [],
       people: companies.map((name) => ({ name: String(name), role: 'DEVELOPER' as const })),
