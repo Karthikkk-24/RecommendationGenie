@@ -8,6 +8,7 @@ const actions = [
   { action: 'LIKE', label: 'Like it' },
   { action: 'MAYBE', label: 'Maybe' },
   { action: 'NOT_FOR_ME', label: 'Not for me' },
+  { action: 'NEVER_THIS_TYPE', label: 'Never this type' },
   { action: 'ALREADY_CONSUMED', label: 'Already consumed' },
   { action: 'SAVE', label: 'Save' },
 ] as const;
