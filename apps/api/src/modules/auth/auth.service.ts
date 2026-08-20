@@ -168,6 +168,7 @@ export class AuthService {
       secure: isProd,
       sameSite: 'lax' as const,
       path: '/',
+      signed: true,
     };
   }
 
