@@ -7,6 +7,7 @@ const publicPaths = [
   '/register',
   '/forgot-password',
   '/reset-password',
+  '/verify-email',
 ];
 
 export function proxy(request: NextRequest) {
