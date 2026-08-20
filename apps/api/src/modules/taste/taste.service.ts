@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { TASTE } from '@recommendation-genie/config';
 import type { FeedbackReason, InteractionType } from '@recommendation-genie/types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -195,45 +196,34 @@ export class TasteService {
       },
     });
 
-    for (const genre of input.favoriteGenres) {
-      await this.prisma.client.tastePreference.upsert({
-        where: {
-          userId_featureType_featureKey: { userId, featureType: 'GENRE', featureKey: genre },
-        },
-        update: { weight: 0.7 },
-        create: { userId, featureType: 'GENRE', featureKey: genre, weight: 0.7 },
-      });
-    }
-    for (const genre of input.dislikedGenres) {
-      await this.prisma.client.tastePreference.upsert({
-        where: {
-          userId_featureType_featureKey: { userId, featureType: 'GENRE', featureKey: genre },
-        },
-        update: { weight: -0.7 },
-        create: { userId, featureType: 'GENRE', featureKey: genre, weight: -0.7 },
-      });
-    }
-    for (const theme of input.preferredThemes ?? []) {
-      await this.prisma.client.tastePreference.upsert({
-        where: {
-          userId_featureType_featureKey: { userId, featureType: 'THEME', featureKey: theme },
-        },
-        update: { weight: 0.65 },
-        create: { userId, featureType: 'THEME', featureKey: theme, weight: 0.65 },
-      });
-    }
-    for (const mediaType of input.enabledMediaTypes ?? []) {
-      await this.prisma.client.tastePreference.upsert({
-        where: {
-          userId_featureType_featureKey: {
-            userId,
-            featureType: 'MEDIA_TYPE',
-            featureKey: mediaType,
-          },
-        },
-        update: { weight: 0.6 },
-        create: { userId, featureType: 'MEDIA_TYPE', featureKey: mediaType, weight: 0.6 },
-      });
+    const features: NonNullable<PreferencePatch['features']> = [
+      ...input.favoriteGenres.map((genre) => ({
+        featureType: 'GENRE' as const,
+        featureKey: genre,
+        signal: 1,
+      })),
+      ...input.dislikedGenres.map((genre) => ({
+        featureType: 'GENRE' as const,
+        featureKey: genre,
+        signal: -1,
+      })),
+      ...(input.preferredThemes ?? []).map((theme) => ({
+        featureType: 'THEME' as const,
+        featureKey: theme,
+        signal: 1,
+      })),
+      ...(input.enabledMediaTypes ?? []).map((mediaType) => ({
+        featureType: 'MEDIA_TYPE' as const,
+        featureKey: mediaType,
+        signal: 0.8,
+      })),
+    ];
+
+    // Two bounded learning steps so onboarding can seed meaningfully without
+    // jumping past maxSingleDelta the way a raw ±0.7 upsert would.
+    if (features.length) {
+      await this.applyPatch(userId, { features }, TASTE.maxSingleDelta);
+      await this.applyPatch(userId, { features }, TASTE.maxSingleDelta);
     }
   }
 
