@@ -131,8 +131,18 @@ export class AuthService {
       const payload = await this.jwt.verifyAsync<{ sub: string; email: string; role: AuthUser['role'] }>(token, {
         secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
       });
-      return { id: payload.sub, email: payload.email, role: payload.role };
-    } catch {
+      const user = await this.prisma.client.user.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, email: true, role: true },
+      });
+      if (!user) {
+        throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'User no longer exists' });
+      }
+      return { id: user.id, email: user.email, role: user.role };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Invalid access token' });
     }
   }
