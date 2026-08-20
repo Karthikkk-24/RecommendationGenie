@@ -22,6 +22,10 @@ Default weights (`v1.0`):
 
 Modes remap those weights. `SURPRISE_ME` raises exploration. `HIDDEN_GEMS` / `DEEP_CUTS` down-weight popularity.
 
+Cross-media candidates expand taste genre/tag/theme keys through a shared alias map
+(`cross-media-map.ts`) so a cyberpunk game preference can surface neon synth / neo-noir
+movie labels before vector kNN is available.
+
 Taste update:
 
 ```
