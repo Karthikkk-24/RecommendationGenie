@@ -3,6 +3,7 @@ import { PIPELINE } from '@recommendation-genie/config';
 import type { GenerateRecommendationsInput, MediaType, Mood } from '@recommendation-genie/types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EmbeddingService } from '../embedding/embedding.service';
+import { expandCrossMediaKeys } from './cross-media-map';
 
 type TypeFilter = MediaType | MediaType[] | undefined;
 
@@ -161,13 +162,18 @@ export class CandidateGenerationService {
     if (!seed) {
       return this.popular(type);
     }
-    const genreNames = seed.genres.map((g) => g.genre.name);
+    const genreNames = expandCrossMediaKeys(seed.genres.map((g) => g.genre.name));
     const rows = await this.prisma.client.mediaItem.findMany({
       where: {
         id: { not: similarToId },
         ...this.typeWhere(type),
         ...(genreNames.length
-          ? { genres: { some: { genre: { name: { in: genreNames } } } } }
+          ? {
+              OR: [
+                { genres: { some: { genre: { name: { in: genreNames } } } } },
+                { tags: { some: { tag: { name: { in: genreNames } } } } },
+              ],
+            }
           : { type: seed.type }),
       },
       select: { id: true },
@@ -299,10 +305,14 @@ export class CandidateGenerationService {
     if (prefs.length === 0) {
       return [];
     }
+    const keys = expandCrossMediaKeys(prefs.map((p) => p.featureKey));
     const rows = await this.prisma.client.mediaItem.findMany({
       where: {
         ...this.typeWhere(type),
-        genres: { some: { genre: { name: { in: prefs.map((p) => p.featureKey) } } } },
+        OR: [
+          { genres: { some: { genre: { name: { in: keys } } } } },
+          { tags: { some: { tag: { name: { in: keys } } } } },
+        ],
       },
       select: { id: true },
       take,
@@ -319,10 +329,14 @@ export class CandidateGenerationService {
     if (prefs.length === 0) {
       return [];
     }
+    const keys = expandCrossMediaKeys(prefs.map((p) => p.featureKey));
     const rows = await this.prisma.client.mediaItem.findMany({
       where: {
         ...this.typeWhere(type),
-        tags: { some: { tag: { name: { in: prefs.map((p) => p.featureKey) } } } },
+        OR: [
+          { tags: { some: { tag: { name: { in: keys } } } } },
+          { genres: { some: { genre: { name: { in: keys } } } } },
+        ],
       },
       select: { id: true },
       take,
