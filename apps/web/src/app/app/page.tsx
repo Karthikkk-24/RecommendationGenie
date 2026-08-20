@@ -20,7 +20,7 @@ type RecResponse = {
 export default function DashboardPage() {
   const recs = useQuery({
     queryKey: ['recs'],
-    queryFn: () => api<RecResponse>('/recommendations'),
+    queryFn: () => api<RecResponse>('/recommendations?mode=FOR_YOU'),
   });
   const generate = useMutation({
     mutationFn: () => api<RecResponse>('/recommendations/generate', { method: 'POST', body: JSON.stringify({ mode: 'FOR_YOU' }) }),

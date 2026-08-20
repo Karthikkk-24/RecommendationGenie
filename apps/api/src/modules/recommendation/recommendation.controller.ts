@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import {
   mediaTypeValues,
@@ -43,8 +43,11 @@ export class RecommendationController {
   constructor(private readonly recommendations: RecommendationService) {}
 
   @Get()
-  latest(@CurrentUser() user: AuthUser) {
-    return this.recommendations.latest(user.id);
+  latest(
+    @CurrentUser() user: AuthUser,
+    @Query('mode') mode?: RecommendationMode,
+  ) {
+    return this.recommendations.latest(user.id, mode ?? 'FOR_YOU');
   }
 
   @Get('history')

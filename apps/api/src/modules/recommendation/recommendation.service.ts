@@ -198,9 +198,9 @@ export class RecommendationService {
     return this.serializeGeneration(generation);
   }
 
-  async latest(userId: string) {
+  async latest(userId: string, mode: GenerateRecommendationsInput['mode'] = 'FOR_YOU') {
     const generation = await this.prisma.client.recommendationGeneration.findFirst({
-      where: { userId },
+      where: { userId, mode },
       orderBy: { createdAt: 'desc' },
       include: { items: { include: { mediaItem: { include: this.media.cardInclude() } }, orderBy: { rank: 'asc' } } },
     });

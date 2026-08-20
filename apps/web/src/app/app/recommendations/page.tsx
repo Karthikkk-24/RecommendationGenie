@@ -20,7 +20,7 @@ export default function RecommendationsPage() {
   const queryClient = useQueryClient();
   const recs = useQuery({
     queryKey: ['recs'],
-    queryFn: () => api<RecResponse>('/recommendations'),
+    queryFn: () => api<RecResponse>('/recommendations?mode=FOR_YOU'),
   });
   const generate = useMutation({
     mutationFn: () =>
