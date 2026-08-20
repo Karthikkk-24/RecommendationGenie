@@ -25,6 +25,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm --filter @recommendation-genie/api test:e2e
       - run: pnpm --filter @recommendation-genie/web build
         env:
+          API_URL: http://localhost:3001
+      - run: pnpm --filter @recommendation-genie/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @recommendation-genie/web test:e2e
+        env:
+          CI: true
           API_URL: http://localhost:3001
