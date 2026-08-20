@@ -12,7 +12,11 @@ async function bootstrap(): Promise<void> {
   const origin = process.env.WEB_ORIGIN ?? 'http://localhost:3000';
 
   app.use(helmet());
-  app.use(cookieParser());
+  const cookieSecret = process.env.COOKIE_SECRET;
+  if (!cookieSecret && process.env.NODE_ENV === 'production') {
+    throw new Error('COOKIE_SECRET is required in production');
+  }
+  app.use(cookieParser(cookieSecret ?? 'dev-cookie-secret'));
   app.enableCors({ origin, credentials: true });
   app.useGlobalPipes(
     new ValidationPipe({

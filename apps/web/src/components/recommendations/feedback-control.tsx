@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { api } from '../../lib/utils';
 
 const actions = [
@@ -32,13 +33,17 @@ export function FeedbackControl({
   recommendationItemId?: string;
 }) {
   const queryClient = useQueryClient();
+  const [otherOpen, setOtherOpen] = useState(false);
+  const [otherText, setOtherText] = useState('');
   const mutation = useMutation({
-    mutationFn: (payload: { action: string; reason?: string }) =>
+    mutationFn: (payload: { action: string; reason?: string; otherText?: string }) =>
       api('/feedback', {
         method: 'POST',
         body: JSON.stringify({ mediaItemId, recommendationItemId, ...payload }),
       }),
     onSuccess: () => {
+      setOtherOpen(false);
+      setOtherText('');
       void queryClient.invalidateQueries();
     },
   });
@@ -62,13 +67,53 @@ export function FeedbackControl({
           <button
             key={reason}
             type="button"
-            onClick={() => mutation.mutate({ action: 'NOT_FOR_ME', reason })}
+            onClick={() => {
+              if (reason === 'OTHER') {
+                setOtherOpen(true);
+                return;
+              }
+              mutation.mutate({ action: 'NOT_FOR_ME', reason });
+            }}
             className="text-[10px] uppercase tracking-wider text-[var(--muted)] hover:text-[var(--fg)]"
           >
             {reason.replaceAll('_', ' ').toLowerCase()}
           </button>
         ))}
       </div>
+      {otherOpen ? (
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <input
+            value={otherText}
+            onChange={(event) => setOtherText(event.target.value)}
+            placeholder="Tell Genie why…"
+            className="min-w-[200px] flex-1 rounded-xl border border-[var(--line)] bg-black/30 px-3 py-2 text-xs text-[var(--fg)] outline-none focus:border-[var(--gold)]"
+          />
+          <button
+            type="button"
+            disabled={mutation.isPending || otherText.trim().length < 2}
+            onClick={() =>
+              mutation.mutate({
+                action: 'NOT_FOR_ME',
+                reason: 'OTHER',
+                otherText: otherText.trim(),
+              })
+            }
+            className="rounded-full border border-[var(--gold)] px-3 py-1 text-xs text-[var(--gold)] disabled:opacity-40"
+          >
+            Send
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOtherOpen(false);
+              setOtherText('');
+            }}
+            className="text-xs text-[var(--muted)]"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

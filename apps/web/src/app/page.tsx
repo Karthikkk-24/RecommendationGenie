@@ -1,10 +1,26 @@
+import Link from 'next/link';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 
 const samples = [
-  { title: 'Arrival', type: 'Movie', line: 'Atmospheric sci-fi with linguistic mystery' },
-  { title: 'Outer Wilds', type: 'Game', line: 'Curiosity-driven cosmic archaeology' },
-  { title: 'Dangerous Days', type: 'Music', line: 'Neon highways for a cyberpunk night' },
+  {
+    id: 'media_arrival',
+    title: 'Arrival',
+    type: 'Movie',
+    line: 'Atmospheric sci-fi with linguistic mystery',
+  },
+  {
+    id: 'media_outer_wilds',
+    title: 'Outer Wilds',
+    type: 'Game',
+    line: 'Curiosity-driven cosmic archaeology',
+  },
+  {
+    id: 'media_perturbator',
+    title: 'Dangerous Days',
+    type: 'Music',
+    line: 'Neon highways for a cyberpunk night',
+  },
 ];
 
 export default function HomePage() {
@@ -35,11 +51,13 @@ export default function HomePage() {
       </section>
       <section className="mt-16 grid gap-4 md:grid-cols-3">
         {samples.map((sample) => (
-          <Card key={sample.title}>
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]">{sample.type}</p>
-            <h3 className="mt-2 font-serif text-2xl">{sample.title}</h3>
-            <p className="mt-2 text-sm text-[var(--muted)]">{sample.line}</p>
-          </Card>
+          <Link key={sample.id} href={`/media/${sample.id}`} className="block transition hover:opacity-90">
+            <Card>
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]">{sample.type}</p>
+              <h3 className="mt-2 font-serif text-2xl">{sample.title}</h3>
+              <p className="mt-2 text-sm text-[var(--muted)]">{sample.line}</p>
+            </Card>
+          </Link>
         ))}
       </section>
     </main>

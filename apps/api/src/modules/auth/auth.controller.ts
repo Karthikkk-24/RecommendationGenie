@@ -28,7 +28,8 @@ export class AuthController {
   @Post('logout')
   @HttpCode(200)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    await this.auth.logout(req.cookies?.rg_refresh);
+    const refresh = this.readCookie(req, 'rg_refresh');
+    await this.auth.logout(refresh);
     res.clearCookie('rg_access', this.auth.cookieOptions());
     res.clearCookie('rg_refresh', this.auth.cookieOptions());
     return { ok: true };
@@ -37,7 +38,7 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const session = await this.auth.refresh(req.cookies?.rg_refresh);
+    const session = await this.auth.refresh(this.readCookie(req, 'rg_refresh'));
     this.setCookies(res, session.accessToken, session.refreshToken);
     return { user: session.user };
   }
@@ -74,5 +75,13 @@ export class AuthController {
     const options = this.auth.cookieOptions();
     res.cookie('rg_access', accessToken, { ...options, maxAge: AUTH.accessTokenTtlSeconds * 1000 });
     res.cookie('rg_refresh', refreshToken, { ...options, maxAge: AUTH.refreshTokenTtlSeconds * 1000 });
+  }
+
+  private readCookie(req: Request, name: string): string | undefined {
+    const signed = req.signedCookies?.[name];
+    if (typeof signed === 'string' && signed.length > 0) {
+      return signed;
+    }
+    return req.cookies?.[name];
   }
 }

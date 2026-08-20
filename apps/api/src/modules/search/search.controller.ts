@@ -30,4 +30,30 @@ export class SearchController {
     });
     return this.media.search(query.q, query.type);
   }
+
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  async history(@CurrentUser() user: AuthUser) {
+    const rows = await this.prisma.client.searchHistory.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, query: true, mediaType: true, createdAt: true },
+    });
+    // Dedupe by query (most recent wins) for a tidy recent list.
+    const seen = new Set<string>();
+    const unique: typeof rows = [];
+    for (const row of rows) {
+      const key = row.query.trim().toLowerCase();
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      unique.push(row);
+      if (unique.length >= 8) {
+        break;
+      }
+    }
+    return unique;
+  }
 }
