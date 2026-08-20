@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
 import { FeedbackControl } from '../../../components/recommendations/feedback-control';
+import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { api } from '../../../lib/utils';
@@ -11,7 +12,17 @@ type RecResponse = {
   items: Array<{
     id: string;
     explanation?: string;
-    scores: { final: number; content: number; taste: number; novelty: number; quality: number };
+    scores: {
+      final: number;
+      content: number;
+      taste: number;
+      feedback?: number;
+      creator?: number;
+      novelty: number;
+      quality: number;
+      exploration?: number;
+      ai?: number | null;
+    };
     media: MediaCardData;
   }>;
 };
@@ -74,10 +85,7 @@ export default function RecommendationsPage() {
           <MediaCard item={item.media} score={item.scores.final} />
           <div>
             <p className="text-sm text-[var(--muted)]">{item.explanation}</p>
-            <p className="mt-3 text-xs text-[var(--muted)]">
-              Content {Math.round(item.scores.content * 100)}% · Taste {Math.round(item.scores.taste * 100)}% · Quality{' '}
-              {Math.round(item.scores.quality * 100)}% · Novelty {Math.round(item.scores.novelty * 100)}%
-            </p>
+            <ScoreBreakdown scores={item.scores} className="mt-3" />
             <div className="mt-4">
               <FeedbackControl mediaItemId={item.media.id} recommendationItemId={item.id} />
             </div>
