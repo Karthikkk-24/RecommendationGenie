@@ -18,6 +18,12 @@ class SearchQueryDto {
   pageSize?: number;
 }
 
+class PopularQueryDto {
+  @IsOptional()
+  @IsEnum(mediaTypeValues)
+  type?: MediaType;
+}
+
 @Controller('media')
 export class MediaController {
   constructor(private readonly media: MediaService) {}
@@ -32,8 +38,8 @@ export class MediaController {
   }
 
   @Get('popular')
-  popular(@Query('type') type?: MediaType) {
-    return this.media.popular(type);
+  popular(@Query() query: PopularQueryDto) {
+    return this.media.popular(query.type);
   }
 
   @Get(':id/similar')
