@@ -3,7 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AUTH } from '@recommendation-genie/config';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, VerifyEmailDto } from './dto/auth.dto';
+import { ForgotPasswordDto, LoginDto, RegisterDto, ResendVerificationDto, ResetPasswordDto, VerifyEmailDto } from './dto/auth.dto';
 
 @Controller('auth')
 @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -60,6 +60,13 @@ export class AuthController {
   @HttpCode(200)
   async verifyEmail(@Body() dto: VerifyEmailDto) {
     await this.auth.verifyEmail(dto.token);
+    return { ok: true };
+  }
+
+  @Post('resend-verification')
+  @HttpCode(200)
+  async resendVerification(@Body() dto: ResendVerificationDto) {
+    await this.auth.resendVerification(dto.email);
     return { ok: true };
   }
 

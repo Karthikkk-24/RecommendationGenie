@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -24,7 +24,12 @@ export class MailService {
       body: JSON.stringify({ from, to, subject, text }),
     });
     if (!response.ok) {
-      this.logger.error(`Resend failed: ${response.status}`);
+      const body = await response.text();
+      this.logger.error(`Resend failed: ${response.status} ${body}`);
+      throw new ServiceUnavailableException({
+        code: 'MAIL_FAILED',
+        message: 'Could not send email. Please try again later.',
+      });
     }
   }
 }
