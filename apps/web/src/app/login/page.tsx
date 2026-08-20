@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '../../components/ui/button';
@@ -14,18 +15,22 @@ function safeInternalPath(next: string | null): string | null {
   return next;
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const form = useForm<{ email: string; password: string }>();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-6">
-      <Card className="w-full">
-        <h1 className="font-serif text-3xl">Welcome back</h1>
-        <form
-          className="mt-6 space-y-4"
-          onSubmit={form.handleSubmit(async (values) => {
+    <Card className="w-full">
+      <h1 className="font-serif text-3xl">Welcome back</h1>
+      <form
+        className="mt-6 space-y-4"
+        onSubmit={form.handleSubmit(async (values) => {
+          setError(null);
+          setPending(true);
+          try {
             const session = await api<{
               user: { onboardingStatus: string };
             }>('/auth/login', { method: 'POST', body: JSON.stringify(values) });
@@ -35,18 +40,33 @@ export default function LoginPage() {
               return;
             }
             router.push(next ?? '/app');
-          })}
-        >
-          <Input type="email" placeholder="Email" {...form.register('email', { required: true })} />
-          <Input type="password" placeholder="Password" {...form.register('password', { required: true })} />
-          <Button type="submit" className="w-full">
-            Log in
-          </Button>
-        </form>
-        <p className="mt-4 text-sm text-[var(--muted)]">
-          <a href="/forgot-password">Forgot password</a> · <a href="/register">Create an account</a>
-        </p>
-      </Card>
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Login failed');
+          } finally {
+            setPending(false);
+          }
+        })}
+      >
+        <Input type="email" placeholder="Email" {...form.register('email', { required: true })} />
+        <Input type="password" placeholder="Password" {...form.register('password', { required: true })} />
+        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        <Button type="submit" className="w-full" disabled={pending}>
+          {pending ? 'Signing in…' : 'Log in'}
+        </Button>
+      </form>
+      <p className="mt-4 text-sm text-[var(--muted)]">
+        <a href="/forgot-password">Forgot password</a> · <a href="/register">Create an account</a>
+      </p>
+    </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md items-center px-6">
+      <Suspense fallback={<Card className="w-full">Loading…</Card>}>
+        <LoginForm />
+      </Suspense>
     </main>
   );
 }
