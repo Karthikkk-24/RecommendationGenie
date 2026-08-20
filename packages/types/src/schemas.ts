@@ -87,3 +87,31 @@ export const apiSuccessSchema = <T extends z.ZodType>(data: T) =>
     success: z.literal(true),
     data,
   });
+
+export const loginSchema = z.object({
+  email: z.email(),
+  password: z.string().min(1),
+});
+export type LoginInput = z.infer<typeof loginSchema>;
+
+export const registerSchema = z.object({
+  email: z.email(),
+  username: z
+    .string()
+    .min(3)
+    .max(24)
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores'),
+  name: z.string().min(2).max(80),
+  password: z.string().min(10).max(128),
+});
+export type RegisterInput = z.infer<typeof registerSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.email(),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  password: z.string().min(10).max(128),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

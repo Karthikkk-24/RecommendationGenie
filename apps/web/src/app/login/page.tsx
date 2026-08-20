@@ -1,5 +1,7 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, type LoginInput } from '@recommendation-genie/types';
 import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -18,7 +20,7 @@ function safeInternalPath(next: string | null): string | null {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const form = useForm<{ email: string; password: string }>();
+  const form = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -47,8 +49,14 @@ function LoginForm() {
           }
         })}
       >
-        <Input type="email" placeholder="Email" {...form.register('email', { required: true })} />
-        <Input type="password" placeholder="Password" {...form.register('password', { required: true })} />
+        <Input type="email" placeholder="Email" {...form.register('email')} />
+        {form.formState.errors.email ? (
+          <p className="text-xs text-red-400">{form.formState.errors.email.message}</p>
+        ) : null}
+        <Input type="password" placeholder="Password" {...form.register('password')} />
+        {form.formState.errors.password ? (
+          <p className="text-xs text-red-400">{form.formState.errors.password.message}</p>
+        ) : null}
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? 'Signing in…' : 'Log in'}

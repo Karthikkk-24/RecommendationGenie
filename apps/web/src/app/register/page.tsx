@@ -1,5 +1,7 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { registerSchema, type RegisterInput } from '@recommendation-genie/types';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
@@ -10,7 +12,7 @@ import { api } from '../../lib/utils';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const form = useForm<{ name: string; username: string; email: string; password: string }>();
+  const form = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -33,14 +35,22 @@ export default function RegisterPage() {
             }
           })}
         >
-          <Input placeholder="Name" {...form.register('name', { required: true })} />
-          <Input placeholder="Username" {...form.register('username', { required: true })} />
-          <Input type="email" placeholder="Email" {...form.register('email', { required: true })} />
-          <Input
-            type="password"
-            placeholder="Password (10+ characters)"
-            {...form.register('password', { required: true, minLength: 10 })}
-          />
+          <Input placeholder="Name" {...form.register('name')} />
+          {form.formState.errors.name ? (
+            <p className="text-xs text-red-400">{form.formState.errors.name.message}</p>
+          ) : null}
+          <Input placeholder="Username" {...form.register('username')} />
+          {form.formState.errors.username ? (
+            <p className="text-xs text-red-400">{form.formState.errors.username.message}</p>
+          ) : null}
+          <Input type="email" placeholder="Email" {...form.register('email')} />
+          {form.formState.errors.email ? (
+            <p className="text-xs text-red-400">{form.formState.errors.email.message}</p>
+          ) : null}
+          <Input type="password" placeholder="Password (10+ characters)" {...form.register('password')} />
+          {form.formState.errors.password ? (
+            <p className="text-xs text-red-400">{form.formState.errors.password.message}</p>
+          ) : null}
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? 'Creating…' : 'Create account'}

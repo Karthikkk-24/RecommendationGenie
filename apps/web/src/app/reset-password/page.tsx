@@ -1,5 +1,7 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { resetPasswordSchema, type ResetPasswordInput } from '@recommendation-genie/types';
 import { useForm } from 'react-hook-form';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -11,7 +13,7 @@ import { api } from '../../lib/utils';
 function ResetForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const form = useForm<{ password: string }>();
+  const form = useForm<ResetPasswordInput>({ resolver: zodResolver(resetPasswordSchema) });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [pending, setPending] = useState(false);
@@ -49,11 +51,10 @@ function ResetForm() {
           }
         })}
       >
-        <Input
-          type="password"
-          placeholder="New password"
-          {...form.register('password', { required: true, minLength: 10 })}
-        />
+        <Input type="password" placeholder="New password" {...form.register('password')} />
+        {form.formState.errors.password ? (
+          <p className="text-xs text-red-400">{form.formState.errors.password.message}</p>
+        ) : null}
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? 'Updating…' : 'Update password'}
