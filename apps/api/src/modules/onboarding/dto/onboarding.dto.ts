@@ -1,4 +1,15 @@
-import { IsArray, IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { mediaTypeValues, type MediaType } from '@recommendation-genie/types';
 
 export class OnboardingTypesDto {
@@ -13,9 +24,21 @@ export class OnboardingSelectionsDto {
   mediaItemIds!: string[];
 }
 
+export class OnboardingRatingItemDto {
+  @IsString()
+  mediaItemId!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating!: number;
+}
+
 export class OnboardingRatingsDto {
   @IsArray()
-  ratings!: Array<{ mediaItemId: string; rating: number }>;
+  @ValidateNested({ each: true })
+  @Type(() => OnboardingRatingItemDto)
+  ratings!: OnboardingRatingItemDto[];
 }
 
 export class OnboardingPreferencesDto {
