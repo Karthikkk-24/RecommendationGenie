@@ -458,9 +458,10 @@ model RecommendationItem {
   tasteScore     Float
   feedbackScore  Float
   creatorScore   Float
-  qualityScore   Float
-  noveltyScore   Float
-  aiScore        Float?
+  qualityScore     Float
+  noveltyScore     Float
+  explorationScore Float   @default(0)
+  aiScore          Float?
   explanation    String?
   reason         String?
   generation     RecommendationGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)

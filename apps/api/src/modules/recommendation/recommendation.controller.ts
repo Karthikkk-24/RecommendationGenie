@@ -33,6 +33,16 @@ class GenerateDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(24 * 60)
+  timeAvailableMinutes?: number;
+
+  @IsOptional()
+  @IsString()
+  language?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
   @Max(20)
   count?: number;
 }
@@ -67,6 +77,8 @@ export class RecommendationController {
       mediaType: dto.mediaType,
       similarToId: dto.similarToId,
       mood: dto.mood,
+      timeAvailableMinutes: dto.timeAvailableMinutes,
+      language: dto.language,
       count: dto.count ?? 10,
     });
   }

@@ -28,7 +28,18 @@ export class RecommendationService {
     const blocked = await this.blockedIds(userId, input.mode);
     const candidateIds = (await this.candidates.generate(userId, input)).filter((id) => !blocked.has(id));
     const items = await this.prisma.client.mediaItem.findMany({
-      where: { id: { in: candidateIds } },
+      where: {
+        id: { in: candidateIds },
+        ...(input.language ? { language: input.language } : {}),
+        ...(input.timeAvailableMinutes
+          ? {
+              OR: [
+                { runtimeMinutes: null },
+                { runtimeMinutes: { lte: input.timeAvailableMinutes } },
+              ],
+            }
+          : {}),
+      },
       include: this.media.cardInclude(),
     });
     const { profile, features } = await this.taste.getProfile(userId);
@@ -171,6 +182,7 @@ export class RecommendationService {
                     feedback: row.feedback,
                     quality: row.quality,
                     novelty: row.novelty,
+                    exploration: row.exploration,
                   },
                 }));
               if (!cached) {
@@ -186,6 +198,7 @@ export class RecommendationService {
                 creatorScore: row.creator,
                 qualityScore: row.quality,
                 noveltyScore: row.novelty,
+                explorationScore: row.exploration,
                 aiScore: row.ai,
                 explanation,
                 reason: `Genie thinks this could be a strong match because of ${row.item.genres[0]?.genre.name ?? 'your taste profile'}.`,
@@ -262,6 +275,7 @@ export class RecommendationService {
         feedback: 0.5,
         quality: item.qualityScore,
         novelty: 1 - item.popularity,
+        exploration: (1 - item.popularity) * PIPELINE.explorationRatio,
       },
     };
   }
@@ -281,6 +295,7 @@ export class RecommendationService {
       creatorScore: number;
       qualityScore: number;
       noveltyScore: number;
+      explorationScore: number;
       aiScore: number | null;
       explanation: string | null;
       reason: string | null;
@@ -303,6 +318,7 @@ export class RecommendationService {
           creator: item.creatorScore,
           quality: item.qualityScore,
           novelty: item.noveltyScore,
+          exploration: item.explorationScore,
           ai: item.aiScore,
           final: item.finalScore,
         },
