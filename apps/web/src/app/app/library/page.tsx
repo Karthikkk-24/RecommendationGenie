@@ -7,13 +7,20 @@ import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/utils';
 
 const filters = ['ALL', 'LOVED', 'LIKED', 'SAVED', 'CONSUMED', 'REJECTED'] as const;
+const sorts = [
+  { value: 'RECENTLY_ADDED', label: 'Recently added' },
+  { value: 'HIGHEST_RATED', label: 'Highest rated' },
+  { value: 'RECENTLY_CONSUMED', label: 'Recently consumed' },
+  { value: 'ALPHABETICAL', label: 'A–Z' },
+] as const;
 
 export default function LibraryPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<(typeof filters)[number]>('ALL');
+  const [sort, setSort] = useState<(typeof sorts)[number]['value']>('RECENTLY_ADDED');
   const library = useQuery({
-    queryKey: ['library', filter],
-    queryFn: () => api<MediaCardData[]>(`/library?filter=${filter}`),
+    queryKey: ['library', filter, sort],
+    queryFn: () => api<MediaCardData[]>(`/library?filter=${filter}&sort=${sort}`),
   });
   const unsave = useMutation({
     mutationFn: (mediaItemId: string) => api(`/library/${mediaItemId}`, { method: 'DELETE' }),
@@ -25,7 +32,7 @@ export default function LibraryPage() {
   return (
     <div>
       <h1 className="font-serif text-4xl">Library</h1>
-      <div className="my-6 flex flex-wrap gap-2">
+      <div className="my-6 flex flex-wrap items-center gap-2">
         {filters.map((item) => (
           <button
             key={item}
@@ -36,6 +43,20 @@ export default function LibraryPage() {
             {item}
           </button>
         ))}
+        <label className="ml-auto flex items-center gap-2 text-xs text-[var(--muted)]">
+          Sort
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value as (typeof sorts)[number]['value'])}
+            className="rounded-full border border-[var(--line)] bg-transparent px-3 py-1 text-[var(--fg)]"
+          >
+            {sorts.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {(library.data ?? []).map((item) => (
