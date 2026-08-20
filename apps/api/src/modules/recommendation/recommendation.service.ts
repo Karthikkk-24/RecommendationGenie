@@ -45,22 +45,32 @@ export class RecommendationService {
     const tagWeights = new Map(
       features.filter((f) => f.featureType === 'TAG').map((f) => [f.featureKey, f.weight]),
     );
+    const themeWeights = new Map(
+      features.filter((f) => f.featureType === 'THEME').map((f) => [f.featureKey, f.weight]),
+    );
+    const mediaTypeWeights = new Map(
+      features.filter((f) => f.featureType === 'MEDIA_TYPE').map((f) => [f.featureKey, f.weight]),
+    );
 
     const scored = items.map((item) => {
       const genres = item.genres.map((g) => g.genre.name);
       const tags = item.tags.map((t) => t.tag.name);
       const creators = item.people.map((p) => p.person.name);
+      const themeKeys = [...genres, ...tags];
       const content = this.avg([
         this.featureScore(genres, genreWeights),
         this.featureScore(tags, tagWeights),
+        this.featureScore(themeKeys, themeWeights),
       ]);
       const tasteScore = this.avg([
         1 - Math.abs(item.complexity - profile.complexity) / 2,
         1 - Math.abs(item.darkness - profile.darkness) / 2,
         1 - Math.abs(item.pacing - profile.pacing) / 2,
         this.featureScore(genres, genreWeights),
+        this.featureScore(themeKeys, themeWeights),
+        this.featureScore([item.type], mediaTypeWeights),
       ]);
-      const feedback = this.featureScore(tags, tagWeights);
+      const feedback = this.featureScore([...tags, ...themeKeys], new Map([...tagWeights, ...themeWeights]));
       const creator = this.featureScore(creators, creatorWeights);
       const quality = item.qualityScore;
       const novelty = 1 - item.popularity;

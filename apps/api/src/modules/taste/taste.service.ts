@@ -3,6 +3,7 @@ import type { FeedbackReason, InteractionType } from '@recommendation-genie/type
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   applyPreferenceUpdate,
+  clampPreference,
   interactionLearningRate,
   interactionSignal,
   patchesFromFeedbackReason,
@@ -159,6 +160,81 @@ export class TasteService {
       changes,
       message: changes.length ? 'Your taste is changing.' : 'Your taste has been stable lately.',
     };
+  }
+
+  async seedFromOnboarding(
+    userId: string,
+    input: {
+      favoriteGenres: string[];
+      dislikedGenres: string[];
+      preferredThemes?: string[];
+      preferredPacing?: number;
+      preferredComplexity?: number;
+      preferredTone?: string;
+      enabledMediaTypes?: string[];
+    },
+  ): Promise<void> {
+    // Onboarding sliders are explicit targets — set TasteProfile scalars directly
+    // so the first recommendation batch reflects them (not a weak learning step).
+    const darkness =
+      input.preferredTone === 'dark' ? 0.6 : input.preferredTone === 'light' ? -0.4 : undefined;
+    await this.prisma.client.tasteProfile.upsert({
+      where: { userId },
+      update: {
+        ...(input.preferredComplexity !== undefined
+          ? { complexity: clampPreference(input.preferredComplexity) }
+          : {}),
+        ...(input.preferredPacing !== undefined ? { pacing: clampPreference(input.preferredPacing) } : {}),
+        ...(darkness !== undefined ? { darkness: clampPreference(darkness) } : {}),
+      },
+      create: {
+        userId,
+        complexity: clampPreference(input.preferredComplexity ?? 0),
+        pacing: clampPreference(input.preferredPacing ?? 0),
+        darkness: clampPreference(darkness ?? 0),
+      },
+    });
+
+    for (const genre of input.favoriteGenres) {
+      await this.prisma.client.tastePreference.upsert({
+        where: {
+          userId_featureType_featureKey: { userId, featureType: 'GENRE', featureKey: genre },
+        },
+        update: { weight: 0.7 },
+        create: { userId, featureType: 'GENRE', featureKey: genre, weight: 0.7 },
+      });
+    }
+    for (const genre of input.dislikedGenres) {
+      await this.prisma.client.tastePreference.upsert({
+        where: {
+          userId_featureType_featureKey: { userId, featureType: 'GENRE', featureKey: genre },
+        },
+        update: { weight: -0.7 },
+        create: { userId, featureType: 'GENRE', featureKey: genre, weight: -0.7 },
+      });
+    }
+    for (const theme of input.preferredThemes ?? []) {
+      await this.prisma.client.tastePreference.upsert({
+        where: {
+          userId_featureType_featureKey: { userId, featureType: 'THEME', featureKey: theme },
+        },
+        update: { weight: 0.65 },
+        create: { userId, featureType: 'THEME', featureKey: theme, weight: 0.65 },
+      });
+    }
+    for (const mediaType of input.enabledMediaTypes ?? []) {
+      await this.prisma.client.tastePreference.upsert({
+        where: {
+          userId_featureType_featureKey: {
+            userId,
+            featureType: 'MEDIA_TYPE',
+            featureKey: mediaType,
+          },
+        },
+        update: { weight: 0.6 },
+        create: { userId, featureType: 'MEDIA_TYPE', featureKey: mediaType, weight: 0.6 },
+      });
+    }
   }
 
   private async applyPatch(userId: string, patch: PreferencePatch, learningRate: number): Promise<void> {
