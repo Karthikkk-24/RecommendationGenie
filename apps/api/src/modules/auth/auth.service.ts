@@ -126,6 +126,20 @@ export class AuthService {
     });
   }
 
+  async resendVerification(email: string): Promise<void> {
+    const user = await this.prisma.client.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (!user || user.emailVerifiedAt) {
+      return;
+    }
+    const verifyToken = await this.issueEmailToken(user.id, 'VERIFY_EMAIL');
+    const webOrigin = this.config.get<string>('WEB_ORIGIN') ?? 'http://localhost:3000';
+    await this.mail.send(
+      user.email,
+      'Verify your Recommendation Genie account',
+      `Verify your email: ${webOrigin}/verify-email?token=${verifyToken}`,
+    );
+  }
+
   async verifyAccessToken(token: string): Promise<AuthUser> {
     try {
       const payload = await this.jwt.verifyAsync<{ sub: string; email: string; role: AuthUser['role'] }>(token, {

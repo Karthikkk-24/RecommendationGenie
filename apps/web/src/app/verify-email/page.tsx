@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
 import { api } from '../../lib/utils';
 
 type Status = 'idle' | 'verifying' | 'success' | 'error';
@@ -16,6 +17,9 @@ function VerifyEmailForm() {
   const [message, setMessage] = useState(
     token ? 'Confirming your email…' : 'This verification link is missing a token.',
   );
+  const [email, setEmail] = useState('');
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendPending, setResendPending] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -61,12 +65,40 @@ function VerifyEmailForm() {
       ) : null}
       {status === 'error' ? (
         <div className="flex flex-col gap-3">
-          <Button href="/login" className="w-full">
+          <form
+            className="space-y-3"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              setResendPending(true);
+              setResendMessage(null);
+              try {
+                await api('/auth/resend-verification', {
+                  method: 'POST',
+                  body: JSON.stringify({ email }),
+                });
+                setResendMessage('If that account needs verification, a new link is on the way.');
+              } catch (error) {
+                setResendMessage(error instanceof Error ? error.message : 'Could not resend verification.');
+              } finally {
+                setResendPending(false);
+              }
+            }}
+          >
+            <Input
+              type="email"
+              placeholder="Email for a new link"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+            <Button type="submit" className="w-full" disabled={resendPending}>
+              {resendPending ? 'Sending…' : 'Resend verification email'}
+            </Button>
+          </form>
+          {resendMessage ? <p className="text-xs text-[var(--muted)]">{resendMessage}</p> : null}
+          <Button href="/login" variant="ghost" className="w-full">
             Back to login
           </Button>
-          <p className="text-xs text-[var(--muted)]">
-            Need a new link? Sign in and request another verification email, or register again if you never finished setup.
-          </p>
           <Link href="/register" className="text-sm text-[var(--gold)] hover:underline">
             Create an account
           </Link>
