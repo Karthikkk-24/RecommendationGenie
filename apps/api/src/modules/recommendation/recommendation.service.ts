@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ALGORITHM_VERSION, PIPELINE, SCORING_WEIGHTS } from '@recommendation-genie/config';
+import { ALGORITHM_VERSION, PIPELINE } from '@recommendation-genie/config';
 import type { GenerateRecommendationsInput } from '@recommendation-genie/types';
 import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -8,6 +8,7 @@ import { AiService } from '../ai/ai.service';
 import { MediaService } from '../media/media.service';
 import { TasteService } from '../taste/taste.service';
 import { CandidateGenerationService } from './candidate-generation.service';
+import { RecommendationConfigService } from './recommendation-config.service';
 import { combineScores, mmrSelect, moodAlignment, normalize01, weightsForMode } from './scoring';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class RecommendationService {
     private readonly ai: AiService,
     private readonly cache: CacheService,
     private readonly analytics: AnalyticsService,
+    private readonly config: RecommendationConfigService,
   ) {}
 
   async generate(userId: string, input: GenerateRecommendationsInput) {
@@ -30,7 +32,8 @@ export class RecommendationService {
       include: this.media.cardInclude(),
     });
     const { profile, features } = await this.taste.getProfile(userId);
-    const weights = weightsForMode(input.mode, SCORING_WEIGHTS);
+    const baseWeights = await this.config.getActiveWeights();
+    const weights = weightsForMode(input.mode, baseWeights);
     const liked = await this.prisma.client.userMediaInteraction.findMany({
       where: { userId, type: { in: ['LIKE', 'LOVE'] } },
       include: { mediaItem: true },

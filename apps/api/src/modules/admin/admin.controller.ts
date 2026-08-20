@@ -3,12 +3,16 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RecommendationConfigService } from '../recommendation/recommendation-config.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly recommendationConfig: RecommendationConfigService,
+  ) {}
 
   @Get('health')
   async health() {
@@ -30,7 +34,8 @@ export class AdminController {
   }
 
   @Get('algorithm-versions')
-  versions() {
-    return this.prisma.client.recommendationConfig.findMany();
+  async versions() {
+    await this.recommendationConfig.ensureDefault();
+    return this.recommendationConfig.listVersions();
   }
 }
