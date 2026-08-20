@@ -12,7 +12,7 @@ MVP split: Next.js on Vercel, NestJS on Render or Railway, Neon for Postgres. Do
    - `NEXT_PUBLIC_API_URL` — `/api` in production (same-origin proxy)
 3. Do **not** put TMDB, IGDB, OpenAI, JWT, or database secrets in Vercel public env.
 
-Cookie auth depends on the rewrite: the browser talks to `your-app.vercel.app/api/...`, Next proxies to Nest, cookies stay first-party.
+Cookie auth depends on the Next.js `/api/[...path]` route handler, which proxies to Nest and appends every `Set-Cookie` (access + refresh) first-party. Do not rely on `rewrites` for auth cookies.
 
 ## API (Render or Railway)
 
