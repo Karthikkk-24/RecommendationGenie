@@ -46,8 +46,8 @@ export class LibraryController {
     return this.library.add(user.id, dto.mediaItemId);
   }
 
-  @Delete(':id')
-  remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.library.remove(user.id, id);
+  @Delete(':mediaItemId')
+  remove(@CurrentUser() user: AuthUser, @Param('mediaItemId') mediaItemId: string) {
+    return this.library.remove(user.id, mediaItemId);
   }
 }
