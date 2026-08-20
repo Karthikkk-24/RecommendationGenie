@@ -34,4 +34,6 @@ new = clamp(old * 0.98 + signal * learningRate, -1, 1)
 
 A single interaction cannot move a dimension by more than 0.30.
 
-UI match percentages are these score components. They are not decorated after the fact.
+UI match percentages use the stored (or match-endpoint computed) component scores via a shared
+`ScoreBreakdown` — final is “Genie match”; content/taste/feedback/creator/quality/novelty/
+exploration/AI are shown when present. They are never decorated after the fact.

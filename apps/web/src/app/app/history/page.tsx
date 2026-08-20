@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
+import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
 import { Card } from '../../../components/ui/card';
 import { api } from '../../../lib/utils';
 
@@ -21,6 +22,7 @@ type HistoryRow = {
       creator: number;
       quality: number;
       novelty: number;
+      exploration?: number;
       ai: number | null;
     };
     media: MediaCardData;
@@ -48,10 +50,7 @@ export default function HistoryPage() {
             {generation.items.map((item) => (
               <div key={item.id} className="min-w-[160px]">
                 <MediaCard item={item.media} score={item.scores.final} />
-                <p className="mt-2 text-[11px] text-[var(--muted)]">
-                  Content {Math.round(item.scores.content * 100)}% · Taste {Math.round(item.scores.taste * 100)}% ·
-                  Quality {Math.round(item.scores.quality * 100)}% · Novelty {Math.round(item.scores.novelty * 100)}%
-                </p>
+                <ScoreBreakdown scores={item.scores} className="mt-2" />
               </div>
             ))}
           </div>

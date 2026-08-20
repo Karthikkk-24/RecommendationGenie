@@ -259,23 +259,53 @@ export class RecommendationService {
       throw new NotFoundException({ code: 'MEDIA_NOT_FOUND', message: 'Media item not found' });
     }
     const { profile, features } = await this.taste.getProfile(userId);
+    const baseWeights = await this.config.getActiveWeights();
+    const weights = weightsForMode('FOR_YOU', baseWeights);
     const genreWeights = new Map(
       features.filter((f) => f.featureType === 'GENRE').map((f) => [f.featureKey, f.weight]),
     );
-    const content = this.featureScore(
-      item.genres.map((g) => g.genre.name),
-      genreWeights,
+    const creatorWeights = new Map(
+      features.filter((f) => f.featureType === 'CREATOR').map((f) => [f.featureKey, f.weight]),
     );
-    const tasteScore = 1 - Math.abs(item.complexity - profile.complexity) / 2;
+    const tagWeights = new Map(
+      features.filter((f) => f.featureType === 'TAG').map((f) => [f.featureKey, f.weight]),
+    );
+    const themeWeights = new Map(
+      features.filter((f) => f.featureType === 'THEME').map((f) => [f.featureKey, f.weight]),
+    );
+    const genres = item.genres.map((g) => g.genre.name);
+    const tags = item.tags.map((t) => t.tag.name);
+    const creators = item.people.map((p) => p.person.name);
+    const themeKeys = [...genres, ...tags];
+    const content = this.avg([
+      this.featureScore(genres, genreWeights),
+      this.featureScore(tags, tagWeights),
+      this.featureScore(themeKeys, themeWeights),
+    ]);
+    const tasteScore = this.avg([
+      1 - Math.abs(item.complexity - profile.complexity) / 2,
+      1 - Math.abs(item.darkness - profile.darkness) / 2,
+      1 - Math.abs(item.pacing - profile.pacing) / 2,
+      this.featureScore(genres, genreWeights),
+    ]);
+    const feedback = this.featureScore([...tags, ...themeKeys], new Map([...tagWeights, ...themeWeights]));
+    const creator = this.featureScore(creators, creatorWeights);
+    const novelty = 1 - item.popularity;
+    const exploration = novelty * PIPELINE.explorationRatio;
+    const parts = {
+      content: normalize01(content),
+      taste: normalize01(tasteScore, 0, 1),
+      feedback: normalize01(feedback),
+      creator: normalize01(creator),
+      quality: item.qualityScore,
+      exploration,
+      novelty,
+    };
     return {
       media: this.media.toCard(item),
       scores: {
-        content: normalize01(content),
-        taste: normalize01(tasteScore, 0, 1),
-        feedback: 0.5,
-        quality: item.qualityScore,
-        novelty: 1 - item.popularity,
-        exploration: (1 - item.popularity) * PIPELINE.explorationRatio,
+        ...parts,
+        final: combineScores(parts, weights),
       },
     };
   }

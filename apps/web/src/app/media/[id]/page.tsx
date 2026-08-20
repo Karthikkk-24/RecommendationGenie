@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AppNav } from '../../../components/layout/app-nav';
 import { FeedbackControl } from '../../../components/recommendations/feedback-control';
+import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { api } from '../../../lib/utils';
@@ -42,9 +43,18 @@ export default function MediaDetailsPage() {
     enabled: Boolean(params.id) && media.isSuccess && isAuthed,
     retry: false,
     queryFn: () =>
-      api<{ scores: { content: number; taste: number; quality: number; novelty: number } }>(
-        `/recommendations/match/${params.id}`,
-      ),
+      api<{
+        scores: {
+          final: number;
+          content: number;
+          taste: number;
+          feedback: number;
+          creator: number;
+          quality: number;
+          novelty: number;
+          exploration: number;
+        };
+      }>(`/recommendations/match/${params.id}`),
   });
 
   const similar = useQuery({
@@ -109,12 +119,7 @@ export default function MediaDetailsPage() {
 
           {isAuthed && match.data ? (
             <Card className="mt-6">
-              <p>Genie match {Math.round(match.data.scores.taste * 100)}%</p>
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                Content {Math.round(match.data.scores.content * 100)}% · Quality{' '}
-                {Math.round(match.data.scores.quality * 100)}% · Novelty{' '}
-                {Math.round(match.data.scores.novelty * 100)}%
-              </p>
+              <ScoreBreakdown scores={match.data.scores} />
             </Card>
           ) : null}
 
