@@ -33,23 +33,13 @@ export class EmbeddingService {
       item.people.map((p) => p.person.name).join(' '),
     ].join(' | ');
     const contentHash = createHash('sha256').update(text).digest('hex');
-    const existing = await this.prisma.client.embedding.findUnique({
-      where: {
-        entityType_entityId_model: {
-          entityType: 'MEDIA',
-          entityId: mediaItemId,
-          model: EMBEDDING.model,
-        },
-      },
-    });
-    if (existing && existing.contentHash === contentHash) {
-      return this.parseVector((existing as { vector?: string }).vector ?? null);
+
+    const cached = await this.loadCachedVector('MEDIA', mediaItemId, contentHash);
+    if (cached) {
+      return cached;
     }
 
-    const vector = await this.embedText(text);
-    if (!vector) {
-      return this.fallbackVector(text);
-    }
+    const vector = (await this.embedText(text)) ?? this.fallbackVector(text);
     await this.store('MEDIA', mediaItemId, contentHash, vector);
     return vector;
   }
@@ -71,17 +61,10 @@ export class EmbeddingService {
           .join('|'),
       )
       .digest('hex');
-    const existing = await this.prisma.client.embedding.findUnique({
-      where: {
-        entityType_entityId_model: {
-          entityType: 'USER_TASTE',
-          entityId: userId,
-          model: EMBEDDING.model,
-        },
-      },
-    });
-    if (existing && existing.contentHash === contentHash) {
-      return this.parseVector((existing as { vector?: string }).vector ?? null);
+
+    const cached = await this.loadCachedVector('USER_TASTE', userId, contentHash);
+    if (cached) {
+      return cached;
     }
 
     const weights: Record<string, number> = {
@@ -135,6 +118,36 @@ export class EmbeddingService {
     }
   }
 
+  /**
+   * Prisma cannot project Unsupported("vector") columns. Always read the
+   * vector via raw SQL so cache hits keep working across generations.
+   */
+  private async loadCachedVector(
+    entityType: 'MEDIA' | 'USER_TASTE',
+    entityId: string,
+    contentHash: string,
+  ): Promise<number[] | null> {
+    try {
+      const rows = await this.prisma.client.$queryRawUnsafe<Array<{ contentHash: string; vector: string }>>(
+        `SELECT "contentHash", vector::text AS vector
+         FROM "Embedding"
+         WHERE "entityType" = $1 AND "entityId" = $2 AND model = $3
+         LIMIT 1`,
+        entityType,
+        entityId,
+        EMBEDDING.model,
+      );
+      const row = rows[0];
+      if (!row || row.contentHash !== contentHash) {
+        return null;
+      }
+      return this.parseVector(row.vector);
+    } catch (error) {
+      this.logger.debug(String(error));
+      return null;
+    }
+  }
+
   private async embedText(text: string): Promise<number[] | null> {
     if (this.config.get('AI_MOCK') === 'true' || !this.config.get('OPENAI_API_KEY')) {
       return this.fallbackVector(text);
@@ -154,7 +167,7 @@ export class EmbeddingService {
   }
 
   private fallbackVector(text: string): number[] {
-    const dims = 1536;
+    const dims = EMBEDDING.dimensions;
     const vector = Array.from({ length: dims }, () => 0);
     for (let i = 0; i < text.length; i += 1) {
       const index = text.charCodeAt(i) % dims;
@@ -168,16 +181,28 @@ export class EmbeddingService {
     if (!raw) {
       return null;
     }
-    try {
-      return JSON.parse(raw.replace('[', '[').replace(']', ']')) as number[];
-    } catch {
-      return raw
-        .replace('[', '')
-        .replace(']', '')
-        .split(',')
-        .map((part) => Number(part.trim()))
-        .filter((n) => !Number.isNaN(n));
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return null;
     }
+    try {
+      const asJson = trimmed.startsWith('[') ? trimmed : `[${trimmed}]`;
+      const parsed = JSON.parse(asJson) as unknown;
+      if (Array.isArray(parsed) && parsed.every((n) => typeof n === 'number')) {
+        return parsed;
+      }
+    } catch {
+      // Fall through to CSV parse for pgvector text forms like {1,2,3}.
+    }
+    const values = trimmed
+      .replace(/^\[/, '')
+      .replace(/\]$/, '')
+      .replace(/^\{/, '')
+      .replace(/\}$/, '')
+      .split(',')
+      .map((part) => Number(part.trim()))
+      .filter((n) => !Number.isNaN(n));
+    return values.length > 0 ? values : null;
   }
 
   private async store(
