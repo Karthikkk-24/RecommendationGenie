@@ -10,11 +10,11 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { mediaTypeValues, type MediaType } from '@recommendation-genie/types';
+import { mediaTypeValues, supportedMediaTypeValues, type MediaType } from '@recommendation-genie/types';
 
 export class OnboardingTypesDto {
   @IsArray()
-  @IsEnum(mediaTypeValues, { each: true })
+  @IsEnum(supportedMediaTypeValues, { each: true })
   mediaTypes!: MediaType[];
 }
 
