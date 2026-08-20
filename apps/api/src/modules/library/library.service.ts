@@ -64,8 +64,8 @@ export class LibraryService {
     });
   }
 
-  async remove(userId: string, id: string) {
-    await this.prisma.client.savedItem.deleteMany({ where: { userId, id } });
+  async remove(userId: string, mediaItemId: string) {
+    await this.prisma.client.savedItem.deleteMany({ where: { userId, mediaItemId } });
     return { ok: true };
   }
 }
