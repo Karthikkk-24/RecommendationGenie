@@ -34,7 +34,7 @@ Required env:
 | --- | --- |
 | `DATABASE_URL` | Neon **pooled** URL |
 | `DIRECT_DATABASE_URL` | Neon **direct** URL (migrations) |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` / `COOKIE_SECRET` | Long random strings |
+| `JWT_ACCESS_SECRET` / `COOKIE_SECRET` | Long random strings (`JWT_ACCESS_SECRET` signs access JWTs; refresh uses opaque tokens in Postgres) |
 | `WEB_ORIGIN` | Exact Vercel origin, e.g. `https://genie.example.com` |
 | `API_PORT` or `PORT` | Render/Railway port |
 | `NODE_ENV` | `production` |

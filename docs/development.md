@@ -30,10 +30,3 @@ pnpm test
 ```
 
 The important unit test lives at `apps/api/src/modules/recommendation/loop.spec.ts`: after `TOO_SLOW` feedback, slow-content scores fall relative to faster items. MMR diversity is covered in the same file.
-
-## Deployment
-
-- Web: Vercel, `API_URL` pointing at the Nest service (or same-origin reverse proxy)
-- API: Render / Railway / any Node host, bind `0.0.0.0:$PORT`
-- Database: Neon, run `pnpm db:migrate:deploy` then `pnpm db:seed` for demo catalogs
-- Set `NODE_ENV=production`, strong JWT secrets, `AI_MOCK=false` only when an `OPENAI_API_KEY` is present
