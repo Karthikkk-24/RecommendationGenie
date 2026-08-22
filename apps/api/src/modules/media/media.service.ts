@@ -96,18 +96,38 @@ export class MediaService {
     if (similar.length > 0) {
       return similar.map((row) => this.toCard(row.to));
     }
-    const item = await this.prisma.client.mediaItem.findUnique({
+
+    const source = await this.prisma.client.mediaItem.findUnique({
       where: { id },
-      include: { genres: { include: { genre: true } } },
+      include: { sources: true, genres: { include: { genre: true } } },
     });
-    if (!item) {
+    if (!source) {
       return [];
     }
-    const genreIds = item.genres.map((g) => g.genreId);
+
+    for (const link of source.sources) {
+      const provider = this.providers().find((entry) => entry.id === link.provider);
+      if (!provider || link.provider === 'mock') {
+        continue;
+      }
+      await this.syncSimilaritiesFromProvider(provider, link.externalId, id);
+    }
+
+    const refreshed = await this.prisma.client.mediaSimilarity.findMany({
+      where: { fromId: id },
+      include: { to: { include: this.cardInclude() } },
+      orderBy: { score: 'desc' },
+      take: 12,
+    });
+    if (refreshed.length > 0) {
+      return refreshed.map((row) => this.toCard(row.to));
+    }
+
+    const genreIds = source.genres.map((g) => g.genreId);
     const neighbors = await this.prisma.client.mediaItem.findMany({
       where: {
         id: { not: id },
-        type: item.type,
+        type: source.type,
         genres: { some: { genreId: { in: genreIds } } },
       },
       include: this.cardInclude(),
@@ -151,11 +171,38 @@ export class MediaService {
       try {
         const remote = await provider.getPopular({ mediaType, limit: 8 });
         for (const item of remote) {
-          await this.upsertNormalized(item);
+          const mediaItemId = await this.upsertNormalized(item);
+          if (provider.id !== 'mock') {
+            await this.syncSimilaritiesFromProvider(provider, item.externalId, mediaItemId);
+          }
         }
       } catch {
         // Provider keys may be missing in dev; continue with other sources.
       }
+    }
+  }
+
+  private async syncSimilaritiesFromProvider(
+    provider: MediaProvider,
+    externalId: string,
+    fromId: string,
+  ): Promise<void> {
+    try {
+      const similar = await provider.getSimilar(externalId);
+      for (const [index, row] of similar.entries()) {
+        const toId = await this.upsertNormalized(row);
+        if (toId === fromId) {
+          continue;
+        }
+        const score = Math.max(0.1, 1 - index * 0.08);
+        await this.prisma.client.mediaSimilarity.upsert({
+          where: { fromId_toId: { fromId, toId } },
+          create: { fromId, toId, score },
+          update: { score },
+        });
+      }
+    } catch {
+      // Similarity sync is best-effort when providers are unavailable.
     }
   }
 
