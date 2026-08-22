@@ -1,11 +1,12 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { api } from '../../../lib/utils';
 
 type Me = { role: string };
-type Health = { users: number; generations: number; failedAi: number };
+type Health = { users: number; generations: number; failedAi: number; mockMode: boolean };
 type AiFailure = {
   id: string;
   requestType: string;
@@ -20,6 +21,7 @@ type AlgorithmVersion = {
 };
 
 export default function AdminPage() {
+  const queryClient = useQueryClient();
   const me = useQuery({
     queryKey: ['me'],
     queryFn: () => api<Me>('/users/me'),
@@ -40,6 +42,14 @@ export default function AdminPage() {
     enabled: me.data?.role === 'ADMIN',
   });
 
+  const activate = useMutation({
+    mutationFn: (id: string) =>
+      api(`/admin/algorithm-versions/${id}/activate`, { method: 'PATCH' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-versions'] });
+    },
+  });
+
   if (me.isLoading) {
     return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   }
@@ -57,11 +67,12 @@ export default function AdminPage() {
     <div className="space-y-8">
       <h1 className="font-serif text-4xl">Admin</h1>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         {[
           ['Users', health.data?.users],
           ['Generations', health.data?.generations],
           ['AI failures', health.data?.failedAi],
+          ['AI mock mode', health.data?.mockMode ? 'On' : 'Off'],
         ].map(([label, value]) => (
           <Card key={String(label)}>
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{label}</p>
@@ -79,9 +90,21 @@ export default function AdminPage() {
                 <p className="font-medium">{row.algorithmVersion}</p>
                 <p className="text-xs text-[var(--muted)]">{new Date(row.createdAt).toLocaleString()}</p>
               </div>
-              <span className={`text-xs ${row.active ? 'text-[var(--gold)]' : 'text-[var(--muted)]'}`}>
-                {row.active ? 'Active' : 'Inactive'}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs ${row.active ? 'text-[var(--gold)]' : 'text-[var(--muted)]'}`}>
+                  {row.active ? 'Active' : 'Inactive'}
+                </span>
+                {!row.active ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => activate.mutate(row.id)}
+                    disabled={activate.isPending}
+                  >
+                    Activate
+                  </Button>
+                ) : null}
+              </div>
             </Card>
           ))}
           {!versions.isLoading && (versions.data?.length ?? 0) === 0 ? (

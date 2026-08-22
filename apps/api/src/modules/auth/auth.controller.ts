@@ -1,9 +1,19 @@
-import { Body, Controller, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AUTH } from '@recommendation-genie/config';
 import type { Request, Response } from 'express';
+import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
-import { ForgotPasswordDto, LoginDto, RegisterDto, ResendVerificationDto, ResetPasswordDto, VerifyEmailDto } from './dto/auth.dto';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  LoginDto,
+  RegisterDto,
+  ResendVerificationDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+} from './dto/auth.dto';
 
 @Controller('auth')
 @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -74,6 +84,14 @@ export class AuthController {
   @HttpCode(200)
   async resendVerification(@Body() dto: ResendVerificationDto) {
     await this.auth.resendVerification(dto.email);
+    return { ok: true };
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  async changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
+    await this.auth.changePassword(user.id, dto.currentPassword, dto.newPassword);
     return { ok: true };
   }
 

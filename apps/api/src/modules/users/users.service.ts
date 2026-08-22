@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { supportedMediaTypeValues, type MediaType } from '@recommendation-genie/types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { AuthService } from '../auth/auth.service';
@@ -25,6 +26,26 @@ export class UpdateUserDto {
   imageUrl?: string;
 }
 
+export class UpdateMediaTypesDto {
+  @IsArray()
+  @IsEnum(supportedMediaTypeValues, { each: true })
+  mediaTypes!: MediaType[];
+}
+
+export class UpdateNotificationPreferencesDto {
+  @IsOptional()
+  @IsBoolean()
+  emailRecommendations?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  emailDigest?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  productUpdates?: boolean;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -35,7 +56,12 @@ export class UsersService {
   async me(user: AuthUser) {
     const record = await this.prisma.client.user.findUnique({
       where: { id: user.id },
-      include: { profile: true, preference: true, tasteProfile: true },
+      include: {
+        profile: true,
+        preference: true,
+        tasteProfile: true,
+        notificationPreference: true,
+      },
     });
     if (!record) {
       throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' });
@@ -68,5 +94,29 @@ export class UsersService {
 
   async deleteMe(user: AuthUser): Promise<void> {
     await this.prisma.client.user.delete({ where: { id: user.id } });
+  }
+
+  async updateMediaTypes(user: AuthUser, dto: UpdateMediaTypesDto) {
+    return this.prisma.client.userPreference.upsert({
+      where: { userId: user.id },
+      update: { enabledMediaTypes: dto.mediaTypes },
+      create: { userId: user.id, enabledMediaTypes: dto.mediaTypes },
+    });
+  }
+
+  async getNotificationPreferences(user: AuthUser) {
+    return this.prisma.client.userNotificationPreference.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id },
+    });
+  }
+
+  async updateNotificationPreferences(user: AuthUser, dto: UpdateNotificationPreferencesDto) {
+    return this.prisma.client.userNotificationPreference.upsert({
+      where: { userId: user.id },
+      update: dto,
+      create: { userId: user.id, ...dto },
+    });
   }
 }

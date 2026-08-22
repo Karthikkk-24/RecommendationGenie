@@ -6,7 +6,7 @@ import type { MediaProvider, NormalizedMedia, ProviderQuery } from './media-prov
 @Injectable()
 export class MockMediaProvider implements MediaProvider {
   readonly id = 'mock';
-  readonly mediaTypes: MediaType[] = ['MOVIE', 'GAME', 'MUSIC'];
+  readonly mediaTypes: MediaType[] = ['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW', 'BOOK', 'ANIME', 'PODCAST'];
 
   constructor(private readonly prisma: PrismaService) {}
 
