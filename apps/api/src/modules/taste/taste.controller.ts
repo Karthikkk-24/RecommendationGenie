@@ -1,6 +1,7 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { OnboardingPreferencesDto } from '../onboarding/dto/onboarding.dto';
 import { TasteService } from './taste.service';
 
 @Controller('taste-profile')
@@ -21,5 +22,10 @@ export class TasteController {
   @Get('evolution')
   evolution(@CurrentUser() user: AuthUser) {
     return this.taste.evolution(user.id);
+  }
+
+  @Patch('preferences')
+  updatePreferences(@CurrentUser() user: AuthUser, @Body() dto: OnboardingPreferencesDto) {
+    return this.taste.updatePreferences(user.id, dto);
   }
 }

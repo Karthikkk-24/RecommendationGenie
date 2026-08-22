@@ -261,6 +261,52 @@ export class TasteService {
     await this.applyPatch(userId, patch, TASTE.maxSingleDelta);
   }
 
+  async updatePreferences(
+    userId: string,
+    input: {
+      favoriteGenres: string[];
+      dislikedGenres: string[];
+      preferredThemes: string[];
+      preferredPacing?: number;
+      preferredComplexity?: number;
+      preferredTone?: string;
+    },
+  ) {
+    const preference = await this.prisma.client.userPreference.upsert({
+      where: { userId },
+      update: {
+        favoriteGenres: input.favoriteGenres,
+        dislikedGenres: input.dislikedGenres,
+        preferredThemes: input.preferredThemes,
+        preferredPacing: input.preferredPacing,
+        preferredComplexity: input.preferredComplexity,
+        preferredTone: input.preferredTone,
+      },
+      create: {
+        userId,
+        favoriteGenres: input.favoriteGenres,
+        dislikedGenres: input.dislikedGenres,
+        preferredThemes: input.preferredThemes,
+        preferredPacing: input.preferredPacing,
+        preferredComplexity: input.preferredComplexity,
+        preferredTone: input.preferredTone,
+        enabledMediaTypes: ['MOVIE', 'GAME', 'MUSIC'],
+      },
+    });
+
+    await this.seedFromOnboarding(userId, {
+      favoriteGenres: input.favoriteGenres,
+      dislikedGenres: input.dislikedGenres,
+      preferredThemes: input.preferredThemes,
+      preferredPacing: input.preferredPacing,
+      preferredComplexity: input.preferredComplexity,
+      preferredTone: input.preferredTone,
+      enabledMediaTypes: preference.enabledMediaTypes,
+    });
+    await this.snapshot(userId);
+    return preference;
+  }
+
   private async applyPatch(userId: string, patch: PreferencePatch, learningRate: number): Promise<void> {
     const profile = await this.prisma.client.tasteProfile.upsert({
       where: { userId },

@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -14,7 +15,11 @@ import {
   YAxis,
 } from 'recharts';
 import { Card } from '../../../components/ui/card';
+import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/utils';
+
+const genres = ['sci-fi', 'thriller', 'drama', 'comedy', 'romance', 'horror', 'indie', 'synthwave'];
+const themes = ['psychological', 'found-family', 'heist', 'coming-of-age', 'mystery', 'retro'];
 
 type TasteSnapshot = {
   id: string;
@@ -27,6 +32,61 @@ function toPercent(value: number | undefined): number {
 }
 
 export default function TastePage() {
+  const queryClient = useQueryClient();
+  const [favoriteGenres, setFavoriteGenres] = useState<string[]>([]);
+  const [dislikedGenres, setDislikedGenres] = useState<string[]>([]);
+  const [preferredThemes, setPreferredThemes] = useState<string[]>([]);
+  const [complexity, setComplexity] = useState(0);
+  const [pacing, setPacing] = useState(0);
+  const [hydrated, setHydrated] = useState(false);
+
+  const me = useQuery({
+    queryKey: ['me'],
+    queryFn: () =>
+      api<{
+        preference?: {
+          favoriteGenres?: string[];
+          dislikedGenres?: string[];
+          preferredThemes?: string[];
+          preferredComplexity?: number | null;
+          preferredPacing?: number | null;
+        } | null;
+      }>('/users/me'),
+  });
+
+  useEffect(() => {
+    if (!me.data?.preference || hydrated) {
+      return;
+    }
+    const pref = me.data.preference;
+    setFavoriteGenres(pref.favoriteGenres ?? []);
+    setDislikedGenres(pref.dislikedGenres ?? []);
+    setPreferredThemes(pref.preferredThemes ?? []);
+    setComplexity(pref.preferredComplexity ?? 0);
+    setPacing(pref.preferredPacing ?? 0);
+    setHydrated(true);
+  }, [me.data, hydrated]);
+
+  const savePreferences = useMutation({
+    mutationFn: () =>
+      api('/taste-profile/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          favoriteGenres,
+          dislikedGenres,
+          preferredThemes,
+          preferredComplexity: complexity,
+          preferredPacing: pacing,
+        }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['taste'] });
+      void queryClient.invalidateQueries({ queryKey: ['taste-history'] });
+      void queryClient.invalidateQueries({ queryKey: ['taste-evo'] });
+      void queryClient.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+
   const taste = useQuery({
     queryKey: ['taste'],
     queryFn: () =>
@@ -81,6 +141,84 @@ export default function TastePage() {
           ))}
         </div>
       ) : null}
+      <Card className="space-y-4">
+        <h2 className="font-serif text-2xl">Edit taste preferences</h2>
+        <p className="text-sm text-[var(--muted)]">Update genres and sliders — Genie re-seeds your profile and snapshots the change.</p>
+        <div>
+          <p className="mb-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Favorite genres</p>
+          <div className="flex flex-wrap gap-2">
+            {genres.map((genre) => (
+              <button
+                key={genre}
+                type="button"
+                onClick={() =>
+                  setFavoriteGenres((current) =>
+                    current.includes(genre) ? current.filter((g) => g !== genre) : [...current, genre],
+                  )
+                }
+                className={`rounded-full border px-3 py-1 text-sm ${favoriteGenres.includes(genre) ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
+              >
+                {genre}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Themes</p>
+          <div className="flex flex-wrap gap-2">
+            {themes.map((theme) => (
+              <button
+                key={theme}
+                type="button"
+                onClick={() =>
+                  setPreferredThemes((current) =>
+                    current.includes(theme) ? current.filter((t) => t !== theme) : [...current, theme],
+                  )
+                }
+                className={`rounded-full border px-3 py-1 text-sm ${preferredThemes.includes(theme) ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
+              >
+                {theme}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="block text-sm">
+          Complexity ({complexity.toFixed(1)})
+          <input
+            type="range"
+            min={-1}
+            max={1}
+            step={0.1}
+            value={complexity}
+            onChange={(event) => setComplexity(Number(event.target.value))}
+            className="mt-2 w-full"
+          />
+        </label>
+        <label className="block text-sm">
+          Pacing ({pacing.toFixed(1)})
+          <input
+            type="range"
+            min={-1}
+            max={1}
+            step={0.1}
+            value={pacing}
+            onChange={(event) => setPacing(Number(event.target.value))}
+            className="mt-2 w-full"
+          />
+        </label>
+        <Button
+          type="button"
+          onClick={() => savePreferences.mutate()}
+          disabled={savePreferences.isPending || favoriteGenres.length === 0}
+        >
+          {savePreferences.isPending ? 'Saving…' : 'Save preferences'}
+        </Button>
+        {savePreferences.isError ? (
+          <p className="text-sm text-red-400">
+            {savePreferences.error instanceof Error ? savePreferences.error.message : 'Could not save preferences.'}
+          </p>
+        ) : null}
+      </Card>
       <div className="grid gap-4 md:grid-cols-3">
         {[
           ['Complexity', profile?.complexity],
