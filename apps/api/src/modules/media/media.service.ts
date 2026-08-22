@@ -86,6 +86,30 @@ export class MediaService {
     return this.toCard(item);
   }
 
+  async syncFromProvider(mediaItemId: string): Promise<void> {
+    const item = await this.prisma.client.mediaItem.findUnique({
+      where: { id: mediaItemId },
+      include: { sources: true },
+    });
+    if (!item) {
+      return;
+    }
+
+    for (const source of item.sources) {
+      const provider = this.providers().find((entry) => entry.id === source.provider);
+      if (!provider || source.provider === 'mock') {
+        continue;
+      }
+      try {
+        const details = await provider.getDetails(source.externalId);
+        await this.upsertNormalized(details);
+        await this.syncSimilaritiesFromProvider(provider, source.externalId, mediaItemId);
+      } catch {
+        // Best-effort refresh when provider keys or network calls fail.
+      }
+    }
+  }
+
   async similar(id: string) {
     const similar = await this.prisma.client.mediaSimilarity.findMany({
       where: { fromId: id },

@@ -1,6 +1,7 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { AiService } from '../../modules/ai/ai.service';
 import { EmbeddingService } from '../../modules/embedding/embedding.service';
+import { MediaService } from '../../modules/media/media.service';
 import { JOB_QUEUE } from './jobs.module';
 import type { JobQueue } from './job-queue';
 
@@ -10,6 +11,7 @@ export class JobHandlersService implements OnModuleInit {
     @Inject(JOB_QUEUE) private readonly queue: JobQueue,
     private readonly embeddings: EmbeddingService,
     private readonly ai: AiService,
+    private readonly media: MediaService,
   ) {}
 
   onModuleInit(): void {
@@ -34,6 +36,7 @@ export class JobHandlersService implements OnModuleInit {
     });
 
     this.queue.register<{ mediaItemId: string }>('sync-media', async (payload) => {
+      await this.media.syncFromProvider(payload.mediaItemId);
       await this.embeddings.embedMedia(payload.mediaItemId);
     });
   }
