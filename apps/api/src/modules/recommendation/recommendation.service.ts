@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { ALGORITHM_VERSION, PIPELINE } from '@recommendation-genie/config';
 import type { GenerateRecommendationsInput } from '@recommendation-genie/types';
 import { CacheService } from '../../common/cache/cache.service';
+import { JOB_QUEUE } from '../../common/jobs/jobs.module';
+import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AiService } from '../ai/ai.service';
@@ -22,6 +24,7 @@ export class RecommendationService {
     private readonly cache: CacheService,
     private readonly analytics: AnalyticsService,
     private readonly config: RecommendationConfigService,
+    @Inject(JOB_QUEUE) private readonly jobs: JobQueue,
   ) {}
 
   async generate(userId: string, input: GenerateRecommendationsInput) {
@@ -165,50 +168,52 @@ export class RecommendationService {
         scoringWeights: weights,
         mood: input.mood,
         items: {
-          create: await Promise.all(
-            diversified.map(async (row, index) => {
-              const explanationKey = `explain:${userId}:${row.mediaId}:${ALGORITHM_VERSION}`;
-              const cached = await this.cache.get<string>(explanationKey);
-              const explanation =
-                cached ??
-                (await this.ai.explain({
-                  userId,
-                  title: row.item.title,
-                  genres: row.item.genres.map((g) => g.genre.name),
-                  likedTitles,
-                  scores: {
-                    content: row.content,
-                    taste: row.taste,
-                    feedback: row.feedback,
-                    quality: row.quality,
-                    novelty: row.novelty,
-                    exploration: row.exploration,
-                  },
-                }));
-              if (!cached) {
-                await this.cache.set(explanationKey, explanation, 1000 * 60 * 60 * 12);
-              }
-              return {
-                mediaItemId: row.mediaId,
-                rank: index + 1,
-                finalScore: row.final,
-                contentScore: row.content,
-                tasteScore: row.taste,
-                feedbackScore: row.feedback,
-                creatorScore: row.creator,
-                qualityScore: row.quality,
-                noveltyScore: row.novelty,
-                explorationScore: row.exploration,
-                aiScore: row.ai,
-                explanation,
-                reason: `Genie thinks this could be a strong match because of ${row.item.genres[0]?.genre.name ?? 'your taste profile'}.`,
-              };
-            }),
-          ),
+          create: diversified.map((row, index) => {
+            const reason = `Genie thinks this could be a strong match because of ${row.item.genres[0]?.genre.name ?? 'your taste profile'}.`;
+            return {
+              mediaItemId: row.mediaId,
+              rank: index + 1,
+              finalScore: row.final,
+              contentScore: row.content,
+              tasteScore: row.taste,
+              feedbackScore: row.feedback,
+              creatorScore: row.creator,
+              qualityScore: row.quality,
+              noveltyScore: row.novelty,
+              explorationScore: row.exploration,
+              aiScore: row.ai,
+              explanation: reason,
+              reason,
+            };
+          }),
         },
       },
       include: { items: { include: { mediaItem: { include: this.media.cardInclude() } }, orderBy: { rank: 'asc' } } },
     });
+
+    for (const item of generation.items) {
+      const row = diversified.find((candidate) => candidate.mediaId === item.mediaItemId);
+      if (!row) {
+        continue;
+      }
+      const explanationKey = `explain:${userId}:${item.mediaItemId}:${ALGORITHM_VERSION}`;
+      void this.jobs.enqueue('generate-ai-explanation', {
+        userId,
+        recommendationItemId: item.id,
+        cacheKey: explanationKey,
+        title: row.item.title,
+        genres: row.item.genres.map((g) => g.genre.name),
+        likedTitles,
+        scores: {
+          content: row.content,
+          taste: row.taste,
+          feedback: row.feedback,
+          quality: row.quality,
+          novelty: row.novelty,
+          exploration: row.exploration,
+        },
+      });
+    }
 
     await this.taste.snapshot(userId);
     await this.analytics.track({
@@ -229,14 +234,20 @@ export class RecommendationService {
     return generation ? this.serializeGeneration(generation) : { items: [] };
   }
 
-  async history(userId: string) {
+  async history(userId: string, cursor?: string, limit = 10) {
     const rows = await this.prisma.client.recommendationGeneration.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: { items: { include: { mediaItem: { include: this.media.cardInclude() } }, orderBy: { rank: 'asc' } } },
     });
-    return rows.map((row) => this.serializeGeneration(row));
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+    return {
+      items: page.map((row) => this.serializeGeneration(row)),
+      nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
+    };
   }
 
   async getById(userId: string, id: string) {

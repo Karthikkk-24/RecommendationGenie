@@ -61,8 +61,13 @@ export class RecommendationController {
   }
 
   @Get('history')
-  history(@CurrentUser() user: AuthUser) {
-    return this.recommendations.history(user.id);
+  history(
+    @CurrentUser() user: AuthUser,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimit = limit ? Math.min(Math.max(Number.parseInt(limit, 10) || 10, 1), 50) : 10;
+    return this.recommendations.history(user.id, cursor, parsedLimit);
   }
 
   @Get('match/:mediaId')
