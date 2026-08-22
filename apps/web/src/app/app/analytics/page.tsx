@@ -38,6 +38,22 @@ export default function AnalyticsPage() {
           </Card>
         ))}
       </div>
+      {data?.totals ? (
+        <div className="grid gap-4 md:grid-cols-5">
+          {[
+            ['Likes', data.totals.likes],
+            ['Dislikes', data.totals.dislikes],
+            ['Saves', data.totals.saves],
+            ['Skips', data.totals.skips],
+            ['Impressions', data.totals.impressions],
+          ].map(([label, value]) => (
+            <Card key={String(label)}>
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{label}</p>
+              <p className="mt-2 font-serif text-3xl">{value ?? 0}</p>
+            </Card>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

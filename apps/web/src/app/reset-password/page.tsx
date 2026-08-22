@@ -13,10 +13,25 @@ import { api } from '../../lib/utils';
 function ResetForm() {
   const router = useRouter();
   const params = useSearchParams();
+  const token = params.get('token');
   const form = useForm<ResetPasswordInput>({ resolver: zodResolver(resetPasswordSchema) });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [pending, setPending] = useState(false);
+
+  if (!token) {
+    return (
+      <Card className="w-full space-y-4">
+        <h1 className="font-serif text-3xl">Invalid reset link</h1>
+        <p className="text-sm text-[var(--muted)]">
+          This password reset link is missing or expired. Request a new one from the forgot-password page.
+        </p>
+        <Button type="button" className="w-full" onClick={() => router.push('/forgot-password')}>
+          Request reset link
+        </Button>
+      </Card>
+    );
+  }
 
   if (success) {
     return (
@@ -41,7 +56,7 @@ function ResetForm() {
           try {
             await api('/auth/reset-password', {
               method: 'POST',
-              body: JSON.stringify({ token: params.get('token'), password: values.password }),
+              body: JSON.stringify({ token, password: values.password }),
             });
             setSuccess(true);
           } catch (err) {

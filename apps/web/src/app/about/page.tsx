@@ -13,7 +13,7 @@ export default function AboutPage() {
           'Candidates are gathered from similarity, genres, hidden gems and exploration.',
           'A versioned scoring model ranks them with explainable components.',
           'AI may rerank that shortlist. It never invents the catalog.',
-          'Your feedback updates a bounded taste profile with decay, so old habits fade.',
+          'Your feedback updates a bounded taste profile with decay (~98% retention per update), so old habits fade gradually.',
         ].map((line) => (
           <Card key={line}>
             <p>{line}</p>

@@ -9,6 +9,7 @@ import {
   toGeneratePayload,
   type GenerateFilterState,
 } from '../../../components/recommendations/generate-filters';
+import { RecommendationReason } from '../../../components/recommendations/recommendation-bits';
 import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -18,6 +19,7 @@ type RecResponse = {
   items: Array<{
     id: string;
     explanation?: string;
+    reason?: string;
     scores: {
       final: number;
       content: number;
@@ -92,7 +94,8 @@ export default function RecommendationsPage() {
         <Card key={item.id} className="grid gap-4 md:grid-cols-[160px_1fr]">
           <MediaCard item={item.media} score={item.scores.final} />
           <div>
-            <p className="text-sm text-[var(--muted)]">{item.explanation}</p>
+            {item.reason ? <RecommendationReason text={item.reason} /> : null}
+            {item.explanation ? <p className="text-sm text-[var(--muted)]">{item.explanation}</p> : null}
             <ScoreBreakdown scores={item.scores} className="mt-3" />
             <div className="mt-4">
               <FeedbackControl mediaItemId={item.media.id} recommendationItemId={item.id} />

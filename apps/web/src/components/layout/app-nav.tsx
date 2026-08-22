@@ -1,9 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { api } from '../../lib/utils';
 
-const links = [
+const baseLinks = [
   { href: '/app', label: 'Home' },
   { href: '/app/discover', label: 'Discover' },
   { href: '/app/recommendations', label: 'For you' },
@@ -11,13 +14,34 @@ const links = [
   { href: '/app/taste', label: 'Taste' },
   { href: '/app/search', label: 'Search' },
   { href: '/app/history', label: 'History' },
+  { href: '/app/activity', label: 'Activity' },
   { href: '/app/analytics', label: 'Analytics' },
-  { href: '/app/admin', label: 'Admin' },
   { href: '/app/settings', label: 'Settings' },
 ];
 
 export function AppNav() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const me = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api<{ role: string }>('/users/me'),
+  });
+
+  const links = [
+    ...baseLinks,
+    ...(me.data?.role === 'ADMIN' ? [{ href: '/app/admin', label: 'Admin' }] : []),
+  ];
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await api('/auth/logout', { method: 'POST' });
+      router.push('/');
+    } catch {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[#07070c]/80 backdrop-blur-xl">
@@ -34,12 +58,20 @@ export function AppNav() {
         >
           {open ? 'Close' : 'Menu'}
         </button>
-        <nav className="hidden gap-5 text-sm text-[var(--muted)] md:flex">
+        <nav className="hidden items-center gap-5 text-sm text-[var(--muted)] md:flex">
           {links.map((link) => (
             <Link key={link.href} href={link.href} className="hover:text-[var(--fg)]">
               {link.label}
             </Link>
           ))}
+          <button
+            type="button"
+            className="hover:text-[var(--fg)]"
+            disabled={loggingOut}
+            onClick={() => void handleLogout()}
+          >
+            {loggingOut ? 'Logging out…' : 'Log out'}
+          </button>
         </nav>
       </div>
       {open ? (
@@ -57,6 +89,14 @@ export function AppNav() {
               {link.label}
             </Link>
           ))}
+          <button
+            type="button"
+            className="rounded-lg px-2 py-2 text-left hover:bg-white/5 hover:text-[var(--fg)]"
+            disabled={loggingOut}
+            onClick={() => void handleLogout()}
+          >
+            {loggingOut ? 'Logging out…' : 'Log out'}
+          </button>
         </nav>
       ) : null}
     </header>
