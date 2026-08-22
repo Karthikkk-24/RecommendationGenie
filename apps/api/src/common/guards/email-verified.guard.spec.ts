@@ -49,4 +49,11 @@ describe('EmailVerifiedGuard', () => {
     const guard = createGuard({ REQUIRE_EMAIL_VERIFICATION: 'true' });
     await expect(guard.canActivate(context({ id: 'u1', email: 'a@b.c', role: 'USER' }))).resolves.toBe(true);
   });
+
+  it('returns unauthorized when no user is present', async () => {
+    const guard = createGuard({ REQUIRE_EMAIL_VERIFICATION: 'true' });
+    await expect(guard.canActivate(context(undefined))).rejects.toMatchObject({
+      response: { code: 'UNAUTHORIZED' },
+    });
+  });
 });

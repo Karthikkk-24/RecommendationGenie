@@ -1,6 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { IsOptional, IsString } from 'class-validator';
-import type { MediaType } from '@recommendation-genie/types';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { mediaTypeValues, type MediaType } from '@recommendation-genie/types';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -11,8 +11,19 @@ class SearchDto {
   q!: string;
 
   @IsOptional()
-  @IsString()
+  @IsEnum(mediaTypeValues)
   type?: MediaType;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  pageSize?: number;
 }
 
 @Controller('search')
@@ -28,7 +39,7 @@ export class SearchController {
     await this.prisma.client.searchHistory.create({
       data: { userId: user.id, query: query.q, mediaType: query.type },
     });
-    return this.media.search(query.q, query.type);
+    return this.media.search(query.q, query.type, query.page ?? 1, query.pageSize ?? 20);
   }
 
   @Get('history')

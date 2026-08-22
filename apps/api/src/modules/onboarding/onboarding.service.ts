@@ -25,10 +25,28 @@ export class OnboardingService {
   async getState(userId: string) {
     const user = await this.prisma.client.user.findUnique({
       where: { id: userId },
-      include: { preference: true },
+      include: { preference: true, profile: true },
     });
     const popular = await this.media.popular();
-    return { onboardingStatus: user?.onboardingStatus, preference: user?.preference, popular };
+    return {
+      onboardingStatus: user?.onboardingStatus,
+      preference: user?.preference,
+      onboarding: user?.profile?.onboarding ?? null,
+      popular,
+    };
+  }
+
+  private async persistOnboarding(userId: string, patch: Record<string, unknown>) {
+    const profile = await this.prisma.client.profile.findUnique({ where: { userId } });
+    const existing =
+      profile?.onboarding && typeof profile.onboarding === 'object' && !Array.isArray(profile.onboarding)
+        ? (profile.onboarding as Record<string, unknown>)
+        : {};
+    await this.prisma.client.profile.upsert({
+      where: { userId },
+      update: { onboarding: { ...existing, ...patch, updatedAt: new Date().toISOString() } },
+      create: { userId, onboarding: { ...patch, updatedAt: new Date().toISOString() } },
+    });
   }
 
   async setTypes(userId: string, dto: OnboardingTypesDto) {
@@ -36,17 +54,20 @@ export class OnboardingService {
       where: { id: userId },
       data: { onboardingStatus: 'IN_PROGRESS' },
     });
-    return this.prisma.client.userPreference.upsert({
+    const preference = await this.prisma.client.userPreference.upsert({
       where: { userId },
       update: { enabledMediaTypes: dto.mediaTypes },
       create: { userId, enabledMediaTypes: dto.mediaTypes },
     });
+    await this.persistOnboarding(userId, { step: 1, mediaTypes: dto.mediaTypes });
+    return preference;
   }
 
   async select(userId: string, dto: OnboardingSelectionsDto) {
     for (const mediaItemId of dto.mediaItemIds) {
       await this.interactions.create(userId, { mediaItemId, type: 'LIKE' });
     }
+    await this.persistOnboarding(userId, { step: 2, selections: dto.mediaItemIds });
     return { count: dto.mediaItemIds.length };
   }
 
@@ -58,6 +79,10 @@ export class OnboardingService {
         rating: row.rating,
       });
     }
+    await this.persistOnboarding(userId, {
+      step: 3,
+      ratings: Object.fromEntries(dto.ratings.map((row) => [row.mediaItemId, row.rating])),
+    });
     return { count: dto.ratings.length };
   }
 
@@ -68,29 +93,14 @@ export class OnboardingService {
       create: { userId, ...dto, enabledMediaTypes: ['MOVIE', 'GAME', 'MUSIC'] },
     });
 
-    await this.prisma.client.profile.upsert({
-      where: { userId },
-      update: {
-        onboarding: {
-          favoriteGenres: dto.favoriteGenres,
-          dislikedGenres: dto.dislikedGenres,
-          preferredThemes: dto.preferredThemes,
-          preferredPacing: dto.preferredPacing,
-          preferredComplexity: dto.preferredComplexity,
-          preferredTone: dto.preferredTone,
-        },
-      },
-      create: {
-        userId,
-        onboarding: {
-          favoriteGenres: dto.favoriteGenres,
-          dislikedGenres: dto.dislikedGenres,
-          preferredThemes: dto.preferredThemes,
-          preferredPacing: dto.preferredPacing,
-          preferredComplexity: dto.preferredComplexity,
-          preferredTone: dto.preferredTone,
-        },
-      },
+    await this.persistOnboarding(userId, {
+      step: 4,
+      favoriteGenres: dto.favoriteGenres,
+      dislikedGenres: dto.dislikedGenres,
+      preferredThemes: dto.preferredThemes,
+      preferredPacing: dto.preferredPacing,
+      preferredComplexity: dto.preferredComplexity,
+      preferredTone: dto.preferredTone,
     });
 
     await this.taste.seedFromOnboarding(userId, {
@@ -111,6 +121,7 @@ export class OnboardingService {
       where: { id: userId },
       data: { onboardingStatus: 'COMPLETED' },
     });
+    await this.persistOnboarding(userId, { step: 5, completedAt: new Date().toISOString() });
     await this.taste.snapshot(userId);
     return this.recommendations.generate(userId, { mode: 'FOR_YOU', count: 10 });
   }
@@ -129,6 +140,7 @@ export class OnboardingService {
           ...onboarding,
           calibrationFeedback: dto.feedback,
           calibratedAt: new Date().toISOString(),
+          step: 6,
         },
       },
       create: {
@@ -136,6 +148,7 @@ export class OnboardingService {
         onboarding: {
           calibrationFeedback: dto.feedback,
           calibratedAt: new Date().toISOString(),
+          step: 6,
         },
       },
     });

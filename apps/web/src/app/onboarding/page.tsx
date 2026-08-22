@@ -15,6 +15,18 @@ const themes = ['psychological', 'found-family', 'heist', 'coming-of-age', 'myst
 
 type OnboardingState = {
   onboardingStatus?: string;
+  onboarding?: {
+    step?: number;
+    mediaTypes?: string[];
+    selections?: string[];
+    ratings?: Record<string, number>;
+    favoriteGenres?: string[];
+    dislikedGenres?: string[];
+    preferredThemes?: string[];
+    preferredPacing?: number | null;
+    preferredComplexity?: number | null;
+    preferredTone?: string;
+  } | null;
   preference?: {
     enabledMediaTypes?: string[];
     favoriteGenres?: string[];
@@ -73,24 +85,50 @@ export default function OnboardingPage() {
       return;
     }
     const pref = state.data.preference;
-    if (pref?.enabledMediaTypes?.length) {
-      setTypes(pref.enabledMediaTypes);
+    const saved = state.data.onboarding;
+    if (typeof saved?.step === 'number') {
+      setStep(saved.step);
+    } else if (pref?.enabledMediaTypes?.length) {
       setStep(1);
     }
-    if (pref?.favoriteGenres?.length) {
+    if (saved?.mediaTypes?.length) {
+      setTypes(saved.mediaTypes);
+    } else if (pref?.enabledMediaTypes?.length) {
+      setTypes(pref.enabledMediaTypes);
+    }
+    if (saved?.selections?.length) {
+      setSelected(saved.selections);
+    }
+    if (saved?.ratings) {
+      setRatings(saved.ratings);
+    }
+    if (saved?.favoriteGenres?.length) {
+      setFavoriteGenres(saved.favoriteGenres);
+    } else if (pref?.favoriteGenres?.length) {
       setFavoriteGenres(pref.favoriteGenres);
     }
-    if (pref?.dislikedGenres?.length) {
+    if (saved?.dislikedGenres?.length) {
+      setDislikedGenres(saved.dislikedGenres);
+    } else if (pref?.dislikedGenres?.length) {
       setDislikedGenres(pref.dislikedGenres);
     }
-    if (pref?.preferredThemes?.length) {
+    if (saved?.preferredThemes?.length) {
+      setPreferredThemes(saved.preferredThemes);
+    } else if (pref?.preferredThemes?.length) {
       setPreferredThemes(pref.preferredThemes);
     }
-    if (typeof pref?.preferredComplexity === 'number') {
+    if (typeof saved?.preferredComplexity === 'number') {
+      setComplexity(saved.preferredComplexity);
+    } else if (typeof pref?.preferredComplexity === 'number') {
       setComplexity(pref.preferredComplexity);
     }
-    if (typeof pref?.preferredPacing === 'number') {
+    if (typeof saved?.preferredPacing === 'number') {
+      setPacing(saved.preferredPacing);
+    } else if (typeof pref?.preferredPacing === 'number') {
       setPacing(pref.preferredPacing);
+    }
+    if (saved?.preferredTone === 'light' || saved?.preferredTone === 'dark') {
+      setPreferredTone(saved.preferredTone);
     }
     setHydrated(true);
   }, [state.data, hydrated, router]);

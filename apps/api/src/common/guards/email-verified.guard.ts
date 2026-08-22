@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AuthUser } from '../decorators/current-user.decorator';
@@ -23,10 +24,7 @@ export class EmailVerifiedGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{ user?: AuthUser }>();
     const user = request.user;
     if (!user) {
-      throw new ForbiddenException({
-        code: 'EMAIL_NOT_VERIFIED',
-        message: 'Verify your email to continue',
-      });
+      throw new UnauthorizedException({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
     }
 
     const record = await this.prisma.client.user.findUnique({
