@@ -3,7 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { AppNav } from '../../../components/layout/app-nav';
+import { RatingControl } from '../../../components/media/rating-control';
 import { FeedbackControl } from '../../../components/recommendations/feedback-control';
 import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
 import { Button } from '../../../components/ui/button';
@@ -13,6 +15,9 @@ import { api } from '../../../lib/utils';
 export default function MediaDetailsPage() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const viewedRef = useRef(false);
+  const [rating, setRating] = useState(0);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
   const session = useQuery({
     queryKey: ['me'],
@@ -38,6 +43,30 @@ export default function MediaDetailsPage() {
         releaseDate: string | null;
       }>(`/media/${params.id}`),
   });
+
+  const interactions = useQuery({
+    queryKey: ['interactions-ratings'],
+    enabled: isAuthed,
+    queryFn: () => api<Array<{ mediaItemId: string; rating: number }>>('/interactions/ratings'),
+  });
+
+  useEffect(() => {
+    const existing = interactions.data?.find((row) => row.mediaItemId === params.id);
+    if (existing?.rating) {
+      setRating(existing.rating);
+    }
+  }, [interactions.data, params.id]);
+
+  useEffect(() => {
+    if (!isAuthed || !params.id || viewedRef.current) {
+      return;
+    }
+    viewedRef.current = true;
+    void api('/interactions', {
+      method: 'POST',
+      body: JSON.stringify({ mediaItemId: params.id, type: 'VIEW' }),
+    }).catch(() => undefined);
+  }, [isAuthed, params.id]);
 
   const match = useQuery({
     queryKey: ['match', params.id],
@@ -65,13 +94,17 @@ export default function MediaDetailsPage() {
     queryFn: () => api<Array<{ id: string; title: string }>>(`/media/${params.id}/similar`),
   });
 
-  const interact = useMutation({
-    mutationFn: (type: string) =>
-      api('/interactions', { method: 'POST', body: JSON.stringify({ mediaItemId: params.id, type }) }),
-    onSuccess: (_data, type) => {
-      if (type === 'SAVE' || type === 'LOVE' || type === 'LIKE') {
-        void queryClient.invalidateQueries({ queryKey: ['library'] });
-      }
+  const rate = useMutation({
+    mutationFn: (value: number) =>
+      api('/interactions', {
+        method: 'POST',
+        body: JSON.stringify({ mediaItemId: params.id, type: 'RATED', rating: value }),
+      }),
+    onSuccess: (_data, value) => {
+      setRating(value);
+      setSavedMessage('Rating saved');
+      void queryClient.invalidateQueries({ queryKey: ['interactions-ratings'] });
+      void queryClient.invalidateQueries({ queryKey: ['library'] });
     },
   });
 
@@ -141,29 +174,23 @@ export default function MediaDetailsPage() {
               <Button href={loginHref}>Log in to interact</Button>
             </Card>
           ) : (
-            <>
-              <div className="mt-6 flex flex-wrap gap-3">
-                {['LOVE', 'LIKE', 'DISLIKE', 'SAVE', 'CONSUMED', 'NOT_INTERESTED'].map((type) => (
-                  <Button
-                    key={type}
-                    type="button"
-                    variant="ghost"
-                    onClick={() => interact.mutate(type)}
-                    disabled={interact.isPending}
-                  >
-                    {type}
-                  </Button>
-                ))}
+            <div className="mt-6 space-y-4">
+              <div>
+                <p className="mb-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Your rating</p>
+                <RatingControl
+                  value={rating}
+                  onChange={(value) => {
+                    setRating(value);
+                    rate.mutate(value);
+                  }}
+                />
+                {rate.isPending ? <p className="mt-1 text-xs text-[var(--muted)]">Saving…</p> : null}
+                {savedMessage && !rate.isPending ? (
+                  <p className="mt-1 text-xs text-[var(--gold)]">{savedMessage}</p>
+                ) : null}
               </div>
-              {interact.isError ? (
-                <p className="mt-2 text-xs text-red-400">
-                  {interact.error instanceof Error ? interact.error.message : 'Could not save that interaction.'}
-                </p>
-              ) : null}
-              <div className="mt-6">
-                <FeedbackControl mediaItemId={item.id} />
-              </div>
-            </>
+              <FeedbackControl mediaItemId={item.id} />
+            </div>
           )}
 
           <h2 className="mt-10 font-serif text-2xl">Similar</h2>

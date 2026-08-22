@@ -18,4 +18,9 @@ export class InteractionsController {
   list(@CurrentUser() user: AuthUser) {
     return this.interactions.list(user.id);
   }
+
+  @Get('ratings')
+  listRatings(@CurrentUser() user: AuthUser) {
+    return this.interactions.listRatings(user.id);
+  }
 }

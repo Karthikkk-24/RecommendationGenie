@@ -67,4 +67,11 @@ export class InteractionsService {
       include: { mediaItem: true },
     });
   }
+
+  listRatings(userId: string) {
+    return this.prisma.client.userMediaRating.findMany({
+      where: { userId },
+      select: { mediaItemId: true, rating: true },
+    });
+  }
 }
