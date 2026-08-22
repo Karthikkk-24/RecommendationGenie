@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
+import { RatingControl } from '../../../components/media/rating-control';
 import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/utils';
 
@@ -28,6 +29,21 @@ export default function LibraryPage() {
         params.set('type', type);
       }
       return api<MediaCardData[]>(`/library?${params.toString()}`);
+    },
+  });
+  const ratings = useQuery({
+    queryKey: ['interactions-ratings'],
+    queryFn: () => api<Array<{ mediaItemId: string; rating: number }>>('/interactions/ratings'),
+  });
+  const rate = useMutation({
+    mutationFn: ({ mediaItemId, rating }: { mediaItemId: string; rating: number }) =>
+      api('/interactions', {
+        method: 'POST',
+        body: JSON.stringify({ mediaItemId, type: 'RATED', rating }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['interactions-ratings'] });
+      void queryClient.invalidateQueries({ queryKey: ['library'] });
     },
   });
   const unsave = useMutation({
@@ -82,6 +98,10 @@ export default function LibraryPage() {
         {(library.data ?? []).map((item) => (
           <div key={item.id} className="space-y-2">
             <MediaCard item={item} />
+            <RatingControl
+              value={ratings.data?.find((row) => row.mediaItemId === item.id)?.rating ?? 0}
+              onChange={(value) => rate.mutate({ mediaItemId: item.id, rating: value })}
+            />
             {filter === 'SAVED' ? (
               <Button
                 type="button"
