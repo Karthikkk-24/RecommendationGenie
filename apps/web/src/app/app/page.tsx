@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MediaCard, type MediaCardData } from '../../components/media/media-card';
 import { FeedbackControl } from '../../components/recommendations/feedback-control';
 import { ScoreBreakdown } from '../../components/recommendations/score-breakdown';
@@ -29,12 +29,20 @@ type RecResponse = {
 };
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
   const recs = useQuery({
     queryKey: ['recs'],
     queryFn: () => api<RecResponse>('/recommendations?mode=FOR_YOU'),
   });
   const generate = useMutation({
-    mutationFn: () => api<RecResponse>('/recommendations/generate', { method: 'POST', body: JSON.stringify({ mode: 'FOR_YOU' }) }),
+    mutationFn: () =>
+      api<RecResponse>('/recommendations/generate', {
+        method: 'POST',
+        body: JSON.stringify({ mode: 'FOR_YOU' }),
+      }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['recs'], data);
+    },
   });
   const items = generate.data?.items ?? recs.data?.items ?? [];
   const hero = items[0];
