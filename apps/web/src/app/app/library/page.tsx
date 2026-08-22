@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/utils';
 
 const filters = ['ALL', 'LOVED', 'LIKED', 'SAVED', 'CONSUMED', 'REJECTED'] as const;
+const types = ['ALL', 'MOVIE', 'GAME', 'MUSIC'] as const;
 const sorts = [
   { value: 'RECENTLY_ADDED', label: 'Recently added' },
   { value: 'HIGHEST_RATED', label: 'Highest rated' },
@@ -17,10 +18,17 @@ const sorts = [
 export default function LibraryPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<(typeof filters)[number]>('ALL');
+  const [type, setType] = useState<(typeof types)[number]>('ALL');
   const [sort, setSort] = useState<(typeof sorts)[number]['value']>('RECENTLY_ADDED');
   const library = useQuery({
-    queryKey: ['library', filter, sort],
-    queryFn: () => api<MediaCardData[]>(`/library?filter=${filter}&sort=${sort}`),
+    queryKey: ['library', filter, type, sort],
+    queryFn: () => {
+      const params = new URLSearchParams({ filter, sort });
+      if (type !== 'ALL') {
+        params.set('type', type);
+      }
+      return api<MediaCardData[]>(`/library?${params.toString()}`);
+    },
   });
   const unsave = useMutation({
     mutationFn: (mediaItemId: string) => api(`/library/${mediaItemId}`, { method: 'DELETE' }),
@@ -41,6 +49,18 @@ export default function LibraryPage() {
             className={`rounded-full border px-3 py-1 text-xs ${filter === item ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)] text-[var(--muted)]'}`}
           >
             {item}
+          </button>
+        ))}
+      </div>
+      <div className="mb-6 flex flex-wrap gap-2">
+        {types.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setType(item)}
+            className={`rounded-full border px-3 py-1 text-xs ${type === item ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)] text-[var(--muted)]'}`}
+          >
+            {item === 'ALL' ? 'All types' : item.replaceAll('_', ' ')}
           </button>
         ))}
         <label className="ml-auto flex items-center gap-2 text-xs text-[var(--muted)]">
