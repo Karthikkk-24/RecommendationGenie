@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { api } from '../../lib/utils';
+import { api, postAuthPath, type SessionUser } from '../../lib/utils';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -26,8 +26,20 @@ export default function RegisterPage() {
             setError(null);
             setPending(true);
             try {
-              await api('/auth/register', { method: 'POST', body: JSON.stringify(values) });
-              router.push('/onboarding');
+              const session = await api<{ user: SessionUser; emailVerificationRequired: boolean }>(
+                '/auth/register',
+                {
+                  method: 'POST',
+                  body: JSON.stringify(values),
+                },
+              );
+              router.push(
+                postAuthPath(
+                  { ...session.user, emailVerificationRequired: session.emailVerificationRequired },
+                  null,
+                  session.emailVerificationRequired,
+                ),
+              );
             } catch (err) {
               setError(err instanceof Error ? err.message : 'Registration failed');
             } finally {

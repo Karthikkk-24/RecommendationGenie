@@ -8,18 +8,32 @@ import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { api } from '../../lib/utils';
 
-type Status = 'idle' | 'verifying' | 'success' | 'error';
+type Status = 'idle' | 'pending' | 'verifying' | 'success' | 'error';
 
 function VerifyEmailForm() {
   const params = useSearchParams();
   const token = params.get('token');
-  const [status, setStatus] = useState<Status>(token ? 'verifying' : 'error');
-  const [message, setMessage] = useState(
-    token ? 'Confirming your email…' : 'This verification link is missing a token.',
+  const pending = params.get('pending') === '1';
+  const emailFromQuery = params.get('email') ?? '';
+  const [status, setStatus] = useState<Status>(
+    token ? 'verifying' : pending ? 'pending' : 'error',
   );
-  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState(
+    token
+      ? 'Confirming your email…'
+      : pending
+        ? 'Check your inbox for a verification link before continuing to onboarding.'
+        : 'This verification link is missing a token.',
+  );
+  const [email, setEmail] = useState(emailFromQuery);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [resendPending, setResendPending] = useState(false);
+
+  useEffect(() => {
+    if (emailFromQuery) {
+      setEmail(emailFromQuery);
+    }
+  }, [emailFromQuery]);
 
   useEffect(() => {
     if (!token) {
@@ -51,50 +65,69 @@ function VerifyEmailForm() {
     };
   }, [token]);
 
+  const resendForm = (
+    <form
+      className="space-y-3"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setResendPending(true);
+        setResendMessage(null);
+        try {
+          await api('/auth/resend-verification', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+          });
+          setResendMessage('If that account needs verification, a new link is on the way.');
+        } catch (error) {
+          setResendMessage(error instanceof Error ? error.message : 'Could not resend verification.');
+        } finally {
+          setResendPending(false);
+        }
+      }}
+    >
+      <Input
+        type="email"
+        placeholder="Email for a new link"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        required
+      />
+      <Button type="submit" className="w-full" disabled={resendPending}>
+        {resendPending ? 'Sending…' : 'Resend verification email'}
+      </Button>
+    </form>
+  );
+
   return (
     <Card className="w-full space-y-4">
       <p className="text-xs uppercase tracking-[0.3em] text-[var(--gold)]">Email verification</p>
       <h1 className="font-serif text-3xl">
-        {status === 'success' ? 'You are verified' : status === 'error' ? 'Verification failed' : 'Verifying…'}
+        {status === 'success'
+          ? 'You are verified'
+          : status === 'pending'
+            ? 'Check your email'
+            : status === 'error'
+              ? 'Verification failed'
+              : 'Verifying…'}
       </h1>
       <p className="text-sm text-[var(--muted)]">{message}</p>
       {status === 'success' ? (
-        <Button href="/app" className="w-full">
-          Continue to Genie
+        <Button href="/onboarding" className="w-full">
+          Continue to onboarding
         </Button>
+      ) : null}
+      {status === 'pending' ? (
+        <div className="flex flex-col gap-3">
+          {resendForm}
+          {resendMessage ? <p className="text-xs text-[var(--muted)]">{resendMessage}</p> : null}
+          <Button href="/login" variant="ghost" className="w-full">
+            Back to login
+          </Button>
+        </div>
       ) : null}
       {status === 'error' ? (
         <div className="flex flex-col gap-3">
-          <form
-            className="space-y-3"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              setResendPending(true);
-              setResendMessage(null);
-              try {
-                await api('/auth/resend-verification', {
-                  method: 'POST',
-                  body: JSON.stringify({ email }),
-                });
-                setResendMessage('If that account needs verification, a new link is on the way.');
-              } catch (error) {
-                setResendMessage(error instanceof Error ? error.message : 'Could not resend verification.');
-              } finally {
-                setResendPending(false);
-              }
-            }}
-          >
-            <Input
-              type="email"
-              placeholder="Email for a new link"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-            <Button type="submit" className="w-full" disabled={resendPending}>
-              {resendPending ? 'Sending…' : 'Resend verification email'}
-            </Button>
-          </form>
+          {resendForm}
           {resendMessage ? <p className="text-xs text-[var(--muted)]">{resendMessage}</p> : null}
           <Button href="/login" variant="ghost" className="w-full">
             Back to login
