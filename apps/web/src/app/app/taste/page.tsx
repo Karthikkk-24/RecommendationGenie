@@ -111,7 +111,11 @@ export default function TastePage() {
   });
 
   const profile = taste.data?.profile;
-  const genres = (taste.data?.features ?? []).filter((f) => f.featureType === 'GENRE').slice(0, 8);
+  const genreFeatures = (taste.data?.features ?? []).filter((f) => f.featureType === 'GENRE').slice(0, 8);
+  const topFeatures = (taste.data?.features ?? [])
+    .filter((f) => f.featureType !== 'MEDIA_TYPE')
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 10);
   const chartRows = [...(history.data ?? [])]
     .reverse()
     .slice(-30)
@@ -258,7 +262,7 @@ export default function TastePage() {
       </Card>
       <Card className="h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={genres.map((g) => ({ name: g.featureKey, weight: Math.round((g.weight + 1) * 50) }))}>
+          <BarChart data={topFeatures.map((f) => ({ name: `${f.featureType}: ${f.featureKey}`, weight: Math.round((f.weight + 1) * 50) }))}>
             <XAxis dataKey="name" stroke="#9a9388" />
             <YAxis stroke="#9a9388" />
             <Tooltip />
