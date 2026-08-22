@@ -122,15 +122,41 @@ export class MediaService {
     if (cached) {
       return cached;
     }
-    const items = await this.prisma.client.mediaItem.findMany({
+
+    let items = await this.loadPopularFromDb(mediaType);
+    if (items.length < 24) {
+      await this.bootstrapPopularFromProviders(mediaType);
+      items = await this.loadPopularFromDb(mediaType);
+    }
+
+    const cards = items.map((item) => this.toCard(item));
+    await this.cache.set(cacheKey, cards, 1000 * 60 * 15);
+    return cards;
+  }
+
+  private async loadPopularFromDb(mediaType?: MediaType) {
+    return this.prisma.client.mediaItem.findMany({
       where: mediaType ? { type: mediaType } : {},
       include: this.cardInclude(),
       orderBy: { popularity: 'desc' },
       take: 24,
     });
-    const cards = items.map((item) => this.toCard(item));
-    await this.cache.set(cacheKey, cards, 1000 * 60 * 15);
-    return cards;
+  }
+
+  private async bootstrapPopularFromProviders(mediaType?: MediaType): Promise<void> {
+    for (const provider of this.providers()) {
+      if (mediaType && !provider.mediaTypes.includes(mediaType)) {
+        continue;
+      }
+      try {
+        const remote = await provider.getPopular({ mediaType, limit: 8 });
+        for (const item of remote) {
+          await this.upsertNormalized(item);
+        }
+      } catch {
+        // Provider keys may be missing in dev; continue with other sources.
+      }
+    }
   }
 
   async upsertNormalized(input: NormalizedMedia): Promise<string> {
