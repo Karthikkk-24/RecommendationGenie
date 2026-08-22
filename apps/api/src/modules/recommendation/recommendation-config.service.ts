@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ALGORITHM_VERSION, PIPELINE, SCORING_WEIGHTS } from '@recommendation-genie/config';
 import type { ScoringWeights } from '@recommendation-genie/types';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -56,6 +56,18 @@ export class RecommendationConfigService {
   listVersions() {
     return this.prisma.client.recommendationConfig.findMany({
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async activateVersion(id: string) {
+    const version = await this.prisma.client.recommendationConfig.findUnique({ where: { id } });
+    if (!version) {
+      throw new NotFoundException({ code: 'VERSION_NOT_FOUND', message: 'Algorithm version not found' });
+    }
+    await this.prisma.client.recommendationConfig.updateMany({ data: { active: false } });
+    return this.prisma.client.recommendationConfig.update({
+      where: { id },
+      data: { active: true },
     });
   }
 }

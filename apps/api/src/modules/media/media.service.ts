@@ -6,9 +6,11 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { expandCrossMediaKeys } from '../recommendation/cross-media-map';
 import { IgdbGameProvider } from './providers/igdb.provider';
 import type { MediaProvider, NormalizedMedia } from './providers/media-provider';
+import { LastfmProvider } from './providers/lastfm.provider';
 import { MockMediaProvider } from './providers/mock.provider';
 import { MusicBrainzProvider } from './providers/musicbrainz.provider';
 import { TmdbMovieProvider } from './providers/tmdb.provider';
+import { TmdbTvProvider } from './providers/tmdb-tv.provider';
 
 function slugify(value: string): string {
   return value
@@ -25,14 +27,16 @@ export class MediaService {
     private readonly config: ConfigService,
     private readonly mock: MockMediaProvider,
     private readonly tmdb: TmdbMovieProvider,
+    private readonly tmdbTv: TmdbTvProvider,
     private readonly igdb: IgdbGameProvider,
     private readonly musicbrainz: MusicBrainzProvider,
+    private readonly lastfm: LastfmProvider,
   ) {}
 
   providers(): MediaProvider[] {
     const mode = this.config.get<string>('MEDIA_PROVIDER_MODE') ?? 'mock';
     if (mode === 'live') {
-      return [this.tmdb, this.igdb, this.musicbrainz, this.mock];
+      return [this.tmdb, this.tmdbTv, this.igdb, this.musicbrainz, this.lastfm, this.mock];
     }
     return [this.mock];
   }
@@ -71,7 +75,7 @@ export class MediaService {
       }
     }
 
-    const grouped = await this.groupSearch(query, mediaType);
+    const grouped = await this.groupSearch(query, mediaType, page, pageSize);
     await this.cache.set(cacheKey, grouped, 1000 * 60 * 5);
     return grouped;
   }
@@ -319,8 +323,9 @@ export class MediaService {
     } as const;
   }
 
-  private async groupSearch(query: string, mediaType?: MediaType) {
-    const fuzzyIds = await this.fuzzyTitleIds(query, mediaType, 40);
+  private async groupSearch(query: string, mediaType?: MediaType, page = 1, pageSize = 20) {
+    const skip = (page - 1) * pageSize;
+    const fuzzyIds = await this.fuzzyTitleIds(query, mediaType, pageSize * page + 1);
     const items = await this.prisma.client.mediaItem.findMany({
       where: {
         ...(mediaType ? { type: mediaType } : {}),
@@ -330,14 +335,32 @@ export class MediaService {
         ],
       },
       include: this.cardInclude(),
-      take: 40,
+      skip,
+      take: pageSize + 1,
       orderBy: { popularity: 'desc' },
     });
-    const cards = items.map((item) => this.toCard(item));
+    const hasMore = items.length > pageSize;
+    const pageItems = hasMore ? items.slice(0, pageSize) : items;
+    const cards = pageItems.map((item) => this.toCard(item));
+    if (mediaType) {
+      return {
+        movies: mediaType === 'MOVIE' ? cards : [],
+        games: mediaType === 'GAME' ? cards : [],
+        music: mediaType === 'MUSIC' ? cards : [],
+        tvShows: mediaType === 'TV_SHOW' ? cards : [],
+        page,
+        pageSize,
+        hasMore,
+      };
+    }
     return {
       movies: cards.filter((item) => item.type === 'MOVIE'),
       games: cards.filter((item) => item.type === 'GAME'),
       music: cards.filter((item) => item.type === 'MUSIC'),
+      tvShows: cards.filter((item) => item.type === 'TV_SHOW'),
+      page,
+      pageSize,
+      hasMore,
     };
   }
 

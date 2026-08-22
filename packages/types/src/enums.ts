@@ -5,10 +5,13 @@ export const mediaTypeSchema = z.enum(mediaTypeValues);
 export type MediaType = z.infer<typeof mediaTypeSchema>;
 
 /** Types with live/mock providers today — onboarding should only offer these. */
-export const supportedMediaTypeValues = ['MOVIE', 'GAME', 'MUSIC'] as const;
+export const supportedMediaTypeValues = ['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'] as const;
 export const supportedMediaTypeSchema = z.enum(supportedMediaTypeValues);
 export type SupportedMediaType = z.infer<typeof supportedMediaTypeSchema>;
-export const activeMediaTypes = ['MOVIE', 'GAME', 'MUSIC'] as const satisfies readonly MediaType[];
+export const activeMediaTypes = ['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'] as const satisfies readonly MediaType[];
+
+/** BOOK, ANIME, PODCAST have schema support but no live provider yet — mock-only in dev. */
+export const mockOnlyMediaTypeValues = ['BOOK', 'ANIME', 'PODCAST'] as const;
 
 export const userRoleValues = ['USER', 'ADMIN'] as const;
 export const userRoleSchema = z.enum(userRoleValues);

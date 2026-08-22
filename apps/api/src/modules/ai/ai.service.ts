@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { aiRerankResponseSchema, aiExplanationResponseSchema } from '@recommendation-genie/types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Injectable()
-export class AiService {
+export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
 
   constructor(
@@ -12,8 +12,31 @@ export class AiService {
     private readonly prisma: PrismaService,
   ) {}
 
+  onModuleInit(): void {
+    if (this.isProductionWithoutAiKey()) {
+      this.logger.error(
+        'OPENAI_API_KEY is missing in production and AI_MOCK is not enabled — AI calls will fail',
+      );
+    }
+  }
+
   isMock(): boolean {
+    if (this.isProductionWithoutAiKey()) {
+      throw new Error('OPENAI_API_KEY is required in production unless AI_MOCK=true');
+    }
     return this.config.get('AI_MOCK') === 'true' || !this.config.get('OPENAI_API_KEY');
+  }
+
+  mockMode(): boolean {
+    return this.config.get('AI_MOCK') === 'true' || !this.config.get('OPENAI_API_KEY');
+  }
+
+  private isProductionWithoutAiKey(): boolean {
+    return (
+      this.config.get('NODE_ENV') === 'production' &&
+      !this.config.get('OPENAI_API_KEY') &&
+      this.config.get('AI_MOCK') !== 'true'
+    );
   }
 
   async rerank(input: {

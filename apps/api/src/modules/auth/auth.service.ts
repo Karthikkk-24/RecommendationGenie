@@ -40,6 +40,7 @@ export class AuthService {
         profile: { create: {} },
         preference: { create: { enabledMediaTypes: [] } },
         tasteProfile: { create: {} },
+        notificationPreference: { create: {} },
       },
     });
 
@@ -117,6 +118,24 @@ export class AuthService {
     });
     await this.prisma.client.refreshToken.updateMany({
       where: { userId: record.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.client.user.findUnique({ where: { id: userId } });
+    if (!user || !(await argon2.verify(user.passwordHash, currentPassword))) {
+      throw new UnauthorizedException({ code: 'INVALID_PASSWORD', message: 'Current password is incorrect' });
+    }
+    await this.prisma.client.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash: await argon2.hash(newPassword),
+        sessionVersion: { increment: 1 },
+      },
+    });
+    await this.prisma.client.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
   }

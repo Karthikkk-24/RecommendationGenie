@@ -1,17 +1,40 @@
 import { createHash } from 'node:crypto';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EMBEDDING } from '@recommendation-genie/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Injectable()
-export class EmbeddingService {
+export class EmbeddingService implements OnModuleInit {
   private readonly logger = new Logger(EmbeddingService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {}
+
+  onModuleInit(): void {
+    if (this.isProductionWithoutAiKey()) {
+      this.logger.error(
+        'OPENAI_API_KEY is missing in production and AI_MOCK is not enabled — embeddings will fail',
+      );
+    }
+  }
+
+  isMock(): boolean {
+    if (this.isProductionWithoutAiKey()) {
+      throw new Error('OPENAI_API_KEY is required in production unless AI_MOCK=true');
+    }
+    return this.config.get('AI_MOCK') === 'true' || !this.config.get('OPENAI_API_KEY');
+  }
+
+  private isProductionWithoutAiKey(): boolean {
+    return (
+      this.config.get('NODE_ENV') === 'production' &&
+      !this.config.get('OPENAI_API_KEY') &&
+      this.config.get('AI_MOCK') !== 'true'
+    );
+  }
 
   async embedMedia(mediaItemId: string): Promise<number[] | null> {
     const item = await this.prisma.client.mediaItem.findUnique({
@@ -149,7 +172,7 @@ export class EmbeddingService {
   }
 
   private async embedText(text: string): Promise<number[] | null> {
-    if (this.config.get('AI_MOCK') === 'true' || !this.config.get('OPENAI_API_KEY')) {
+    if (this.isMock()) {
       return this.fallbackVector(text);
     }
     try {

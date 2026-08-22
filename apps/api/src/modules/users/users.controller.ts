@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthService } from '../auth/auth.service';
-import { UpdateUserDto, UsersService } from './users.service';
+import { UpdateUserDto, UpdateMediaTypesDto, UpdateNotificationPreferencesDto, UsersService } from './users.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -21,6 +21,24 @@ export class UsersController {
   @Patch('me')
   updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateUserDto) {
     return this.users.updateMe(user, dto);
+  }
+
+  @Patch('me/media-types')
+  updateMediaTypes(@CurrentUser() user: AuthUser, @Body() dto: UpdateMediaTypesDto) {
+    return this.users.updateMediaTypes(user, dto);
+  }
+
+  @Get('me/notification-preferences')
+  notificationPreferences(@CurrentUser() user: AuthUser) {
+    return this.users.getNotificationPreferences(user);
+  }
+
+  @Patch('me/notification-preferences')
+  updateNotificationPreferences(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpdateNotificationPreferencesDto,
+  ) {
+    return this.users.updateNotificationPreferences(user, dto);
   }
 
   @Delete('me')

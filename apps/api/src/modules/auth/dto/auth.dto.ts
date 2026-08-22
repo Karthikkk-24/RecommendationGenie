@@ -52,3 +52,13 @@ export class ResendVerificationDto {
   @IsEmail()
   email!: string;
 }
+
+export class ChangePasswordDto {
+  @IsString()
+  currentPassword!: string;
+
+  @IsString()
+  @MinLength(10)
+  @MaxLength(128)
+  newPassword!: string;
+}
