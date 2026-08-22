@@ -110,7 +110,10 @@ export class AuthService {
     const record = await this.consumeEmailToken(token, 'RESET_PASSWORD');
     await this.prisma.client.user.update({
       where: { id: record.userId },
-      data: { passwordHash: await argon2.hash(password) },
+      data: {
+        passwordHash: await argon2.hash(password),
+        sessionVersion: { increment: 1 },
+      },
     });
     await this.prisma.client.refreshToken.updateMany({
       where: { userId: record.userId, revokedAt: null },
@@ -142,15 +145,23 @@ export class AuthService {
 
   async verifyAccessToken(token: string): Promise<AuthUser> {
     try {
-      const payload = await this.jwt.verifyAsync<{ sub: string; email: string; role: AuthUser['role'] }>(token, {
+      const payload = await this.jwt.verifyAsync<{
+        sub: string;
+        email: string;
+        role: AuthUser['role'];
+        sv?: number;
+      }>(token, {
         secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
       });
       const user = await this.prisma.client.user.findUnique({
         where: { id: payload.sub },
-        select: { id: true, email: true, role: true },
+        select: { id: true, email: true, role: true, sessionVersion: true },
       });
       if (!user) {
         throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'User no longer exists' });
+      }
+      if ((payload.sv ?? 0) !== user.sessionVersion) {
+        throw new UnauthorizedException({ code: 'SESSION_REVOKED', message: 'Session expired. Sign in again.' });
       }
       return { id: user.id, email: user.email, role: user.role };
     } catch (error) {
@@ -181,8 +192,12 @@ export class AuthService {
   }
 
   private async issueSession(userId: string, email: string, role: AuthUser['role']) {
+    const user = await this.prisma.client.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { id: true, email: true, role: true, onboardingStatus: true, emailVerifiedAt: true, sessionVersion: true },
+    });
     const accessToken = await this.jwt.signAsync(
-      { sub: userId, email, role },
+      { sub: userId, email, role, sv: user.sessionVersion },
       { secret: this.config.getOrThrow('JWT_ACCESS_SECRET'), expiresIn: `${AUTH.accessTokenTtlSeconds}s` },
     );
     const refreshToken = randomBytes(48).toString('hex');
@@ -192,10 +207,6 @@ export class AuthService {
         tokenHash: this.hashToken(refreshToken),
         expiresAt: new Date(Date.now() + AUTH.refreshTokenTtlSeconds * 1000),
       },
-    });
-    const user = await this.prisma.client.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: { id: true, email: true, role: true, onboardingStatus: true, emailVerifiedAt: true },
     });
     return { accessToken, refreshToken, user };
   }
