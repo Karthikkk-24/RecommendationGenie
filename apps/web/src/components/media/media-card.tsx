@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import type { MouseEvent } from 'react';
 import { useState } from 'react';
 import { api } from '../../lib/utils';
@@ -21,13 +20,14 @@ export function MediaCard({
   score,
   explanation,
   showSave,
+  disableNavigation,
 }: {
   item: MediaCardData;
   score?: number;
   explanation?: string;
   showSave?: boolean;
+  disableNavigation?: boolean;
 }) {
-  const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -66,14 +66,8 @@ export function MediaCard({
     }
   };
 
-  return (
-    <Link
-      href={`/media/${item.id}`}
-      className="group relative block min-w-[180px] max-w-[220px]"
-      onClick={() => {
-        trackClick();
-      }}
-    >
+  const body = (
+    <>
       <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-black/40">
         <div
           className="aspect-[2/3] bg-cover bg-center transition duration-500 group-hover:scale-105"
@@ -105,6 +99,22 @@ export function MediaCard({
         <p className="line-clamp-1 text-xs text-[var(--muted)]">{item.genres.join(' · ')}</p>
         {explanation ? <p className="line-clamp-2 text-xs text-[var(--muted)]">{explanation}</p> : null}
       </div>
+    </>
+  );
+
+  if (disableNavigation) {
+    return <div className="group relative block min-w-[180px] max-w-[220px]">{body}</div>;
+  }
+
+  return (
+    <Link
+      href={`/media/${item.id}`}
+      className="group relative block min-w-[180px] max-w-[220px]"
+      onClick={() => {
+        trackClick();
+      }}
+    >
+      {body}
     </Link>
   );
 }

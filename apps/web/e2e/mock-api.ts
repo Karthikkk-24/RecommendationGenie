@@ -33,7 +33,7 @@ export function ok(data: unknown) {
 
 export async function mockProductApi(page: Page, options?: { role?: string; onboardingStatus?: string }) {
   const role = options?.role ?? 'USER';
-  const onboardingStatus = options?.onboardingStatus ?? 'COMPLETED';
+  let onboardingStatus = options?.onboardingStatus ?? 'COMPLETED';
 
   await page.route('**/api/**', async (route: Route) => {
     const request = route.request();
@@ -87,6 +87,7 @@ export async function mockProductApi(page: Page, options?: { role?: string; onbo
     }
 
     if (method === 'POST' && path === '/onboarding/complete') {
+      onboardingStatus = 'COMPLETED';
       return route.fulfill(ok({ items: [recItem] }));
     }
 
@@ -157,7 +158,40 @@ export async function mockProductApi(page: Page, options?: { role?: string; onbo
       return route.fulfill(ok([{ id: 'cfg-1', algorithmVersion: 'v1', active: true, weights: {} }]));
     }
 
-    if (method === 'GET' && path.startsWith('/media/')) {
+    if (method === 'GET' && path === '/interactions/ratings') {
+      return route.fulfill(ok([]));
+    }
+
+    if (method === 'POST' && path === '/interactions') {
+      return route.fulfill(ok({ ok: true }));
+    }
+
+    if (method === 'POST' && path === '/library') {
+      return route.fulfill(ok({ ok: true }));
+    }
+
+    if (method === 'GET' && path.startsWith('/recommendations/match/')) {
+      return route.fulfill(
+        ok({
+          scores: {
+            final: 0.86,
+            content: 0.8,
+            taste: 0.9,
+            feedback: 0.5,
+            creator: 0.5,
+            quality: 0.9,
+            novelty: 0.4,
+            exploration: 0.3,
+          },
+        }),
+      );
+    }
+
+    if (method === 'GET' && /\/media\/[^/]+\/similar$/.test(path)) {
+      return route.fulfill(ok([{ id: sampleMedia.id, title: sampleMedia.title }]));
+    }
+
+    if (method === 'GET' && /^\/media\/[^/]+$/.test(path)) {
       return route.fulfill(
         ok({
           id: sampleMedia.id,

@@ -241,7 +241,7 @@ export default function SettingsPage() {
               <Button
                 key={type}
                 type="button"
-                variant={active ? 'default' : 'ghost'}
+                variant={active ? 'primary' : 'ghost'}
                 onClick={() => toggleMediaType(type)}
                 disabled={!hydrated || saveMediaTypes.isPending}
               >

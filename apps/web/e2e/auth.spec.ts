@@ -6,7 +6,7 @@ test('forgot password shows confirmation', async ({ page }) => {
   await page.goto('/forgot-password');
   await page.getByPlaceholder('Email').fill('e2e@example.com');
   await page.getByRole('button', { name: /send/i }).click();
-  await expect(page.getByText(/check your email/i)).toBeVisible();
+  await expect(page.getByText(/check your inbox/i)).toBeVisible();
 });
 
 test('reset password requires token in URL', async ({ page }) => {
@@ -33,6 +33,6 @@ test('settings logout returns home', async ({ page }) => {
   await mockProductApi(page);
   await seedAuthCookies(page);
   await page.goto('/app/settings');
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await page.getByRole('navigation').getByRole('button', { name: 'Log out' }).click();
   await expect(page).toHaveURL('/');
 });
