@@ -205,12 +205,34 @@ export default function OnboardingPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
       {state.isLoading ? (
-        <p className="text-sm text-[var(--muted)]">Loading onboarding…</p>
-      ) : state.isError && !(state.error instanceof ApiError && state.error.code === 'EMAIL_NOT_VERIFIED') ? (
         <Card>
+          <p className="text-sm text-[var(--muted)]">Loading onboarding…</p>
+        </Card>
+      ) : state.isError && !(state.error instanceof ApiError && state.error.code === 'EMAIL_NOT_VERIFIED') ? (
+        <Card className="space-y-4">
           <p className="text-sm text-red-400">
-            {state.error instanceof Error ? state.error.message : 'Could not load onboarding.'}
+            {state.error instanceof ApiError && state.error.code === 'FORBIDDEN'
+              ? 'Verify your email before continuing onboarding.'
+              : state.error instanceof Error
+                ? state.error.message
+                : 'Could not load onboarding.'}
           </p>
+          <div className="flex flex-wrap gap-3">
+            {state.error instanceof ApiError && state.error.code === 'FORBIDDEN' ? (
+              <Button type="button" onClick={() => router.push('/verify-email?pending=1')}>
+                Verify email
+              </Button>
+            ) : null}
+            {state.error instanceof Error && state.error.message === 'Session expired' ? (
+              <Button type="button" onClick={() => router.push('/login?next=/onboarding')}>
+                Sign in again
+              </Button>
+            ) : (
+              <Button type="button" variant="ghost" onClick={() => void state.refetch()}>
+                Try again
+              </Button>
+            )}
+          </div>
         </Card>
       ) : (
         <>
