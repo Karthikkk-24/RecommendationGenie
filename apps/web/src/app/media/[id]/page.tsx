@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AppNav } from '../../../components/layout/app-nav';
@@ -12,6 +12,7 @@ import { api } from '../../../lib/utils';
 
 export default function MediaDetailsPage() {
   const params = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
 
   const session = useQuery({
     queryKey: ['me'],
@@ -67,6 +68,11 @@ export default function MediaDetailsPage() {
   const interact = useMutation({
     mutationFn: (type: string) =>
       api('/interactions', { method: 'POST', body: JSON.stringify({ mediaItemId: params.id, type }) }),
+    onSuccess: (_data, type) => {
+      if (type === 'SAVE' || type === 'LOVE' || type === 'LIKE') {
+        void queryClient.invalidateQueries({ queryKey: ['library'] });
+      }
+    },
   });
 
   if (media.isPending) {
