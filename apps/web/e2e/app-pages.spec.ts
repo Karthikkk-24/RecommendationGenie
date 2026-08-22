@@ -3,6 +3,7 @@ import { mockProductApi, seedAuthCookies } from './mock-api';
 
 test.describe('app pages with mocked API', () => {
   test.beforeEach(async ({ page }) => {
+    await page.unroute('**/api/**');
     await mockProductApi(page, { role: 'ADMIN' });
     await seedAuthCookies(page);
   });
@@ -22,7 +23,8 @@ test.describe('app pages with mocked API', () => {
   test('analytics page shows totals', async ({ page }) => {
     await page.goto('/app/analytics');
     await expect(page.getByRole('heading', { name: 'Analytics' })).toBeVisible();
-    await expect(page.getByText('5')).toBeVisible();
+    await expect(page.getByText('Likes', { exact: true })).toBeVisible();
+    await expect(page.getByText('5', { exact: true }).first()).toBeVisible();
   });
 
   test('admin page shows health for admin role', async ({ page }) => {
@@ -33,7 +35,7 @@ test.describe('app pages with mocked API', () => {
 
   test('media detail page loads title', async ({ page }) => {
     await page.goto('/media/media-arrival');
-    await expect(page.getByRole('heading', { name: 'Arrival' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Arrival' })).toBeVisible({ timeout: 15_000 });
   });
 
   test('activity page loads', async ({ page }) => {

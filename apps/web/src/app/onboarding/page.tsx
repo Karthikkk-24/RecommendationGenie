@@ -322,7 +322,7 @@ export default function OnboardingPage() {
                   }
                   className={selected.includes(item.id) ? 'rounded-2xl ring-2 ring-[var(--gold)]' : ''}
                 >
-                  <MediaCard item={item} />
+                  <MediaCard item={item} disableNavigation />
                 </button>
               ))}
             </div>

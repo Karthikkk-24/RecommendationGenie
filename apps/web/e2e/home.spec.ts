@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { mockProductApi, seedAuthCookies } from './mock-api';
 
 test('register → onboard → recommendations → feedback → library', async ({ page }) => {
-  await mockProductApi(page);
+  await mockProductApi(page, { onboardingStatus: 'IN_PROGRESS' });
 
   await page.goto('/register');
   await seedAuthCookies(page);
@@ -16,7 +16,7 @@ test('register → onboard → recommendations → feedback → library', async 
   await expect(page.getByRole('heading', { name: 'Tell Genie what you love' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Continue' }).click();
-  await page.locator('button').filter({ hasText: 'Arrival' }).click();
+  await page.getByRole('main').getByRole('button', { name: 'Arrival' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
