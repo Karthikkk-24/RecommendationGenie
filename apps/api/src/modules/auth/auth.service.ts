@@ -172,6 +172,14 @@ export class AuthService {
     };
   }
 
+  isEmailVerificationRequired(): boolean {
+    const raw = this.config.get<string>('REQUIRE_EMAIL_VERIFICATION');
+    if (raw === undefined || raw === '') {
+      return this.config.get<string>('NODE_ENV') === 'production';
+    }
+    return raw === 'true' || raw === '1';
+  }
+
   private async issueSession(userId: string, email: string, role: AuthUser['role']) {
     const accessToken = await this.jwt.signAsync(
       { sub: userId, email, role },
@@ -187,7 +195,7 @@ export class AuthService {
     });
     const user = await this.prisma.client.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { id: true, email: true, role: true, onboardingStatus: true },
+      select: { id: true, email: true, role: true, onboardingStatus: true, emailVerifiedAt: true },
     });
     return { accessToken, refreshToken, user };
   }

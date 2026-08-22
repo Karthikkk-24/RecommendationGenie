@@ -7,7 +7,7 @@ import { MediaCard, type MediaCardData } from '../../components/media/media-card
 import { RatingControl } from '../../components/media/rating-control';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
-import { api } from '../../lib/utils';
+import { api, ApiError, isEmailVerified } from '../../lib/utils';
 
 const steps = ['Types', 'Loves', 'Ratings', 'Preferences', 'Taste', 'Recommendations', 'Calibrate'] as const;
 const genres = ['sci-fi', 'thriller', 'drama', 'comedy', 'romance', 'horror', 'indie', 'synthwave'];
@@ -54,7 +54,14 @@ export default function OnboardingPage() {
   const state = useQuery({
     queryKey: ['onboarding'],
     queryFn: () => api<OnboardingState>('/onboarding'),
+    retry: (count, error) => !(error instanceof ApiError && error.code === 'EMAIL_NOT_VERIFIED') && count < 2,
   });
+
+  useEffect(() => {
+    if (state.error instanceof ApiError && state.error.code === 'EMAIL_NOT_VERIFIED') {
+      router.replace('/verify-email?pending=1');
+    }
+  }, [state.error, router]);
 
   useEffect(() => {
     if (!state.data || hydrated) {
@@ -158,6 +165,10 @@ export default function OnboardingPage() {
       }
     },
     onError: (err) => {
+      if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
+        router.replace('/verify-email?pending=1');
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Something went wrong');
     },
   });
@@ -168,6 +179,16 @@ export default function OnboardingPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
+      {state.isLoading ? (
+        <p className="text-sm text-[var(--muted)]">Loading onboarding…</p>
+      ) : state.isError && !(state.error instanceof ApiError && state.error.code === 'EMAIL_NOT_VERIFIED') ? (
+        <Card>
+          <p className="text-sm text-red-400">
+            {state.error instanceof Error ? state.error.message : 'Could not load onboarding.'}
+          </p>
+        </Card>
+      ) : (
+        <>
       <p className="text-xs uppercase tracking-[0.3em] text-[var(--gold)]">
         Step {step + 1} · {steps[step]}
       </p>
@@ -416,6 +437,8 @@ export default function OnboardingPage() {
           </Button>
         ) : null}
       </div>
+        </>
+      )}
     </main>
   );
 }

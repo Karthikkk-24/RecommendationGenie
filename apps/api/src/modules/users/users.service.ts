@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
+import { AuthService } from '../auth/auth.service';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -26,7 +27,10 @@ export class UpdateUserDto {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auth: AuthService,
+  ) {}
 
   async me(user: AuthUser) {
     const record = await this.prisma.client.user.findUnique({
@@ -37,7 +41,10 @@ export class UsersService {
       throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' });
     }
     const { passwordHash: _passwordHash, ...safe } = record;
-    return safe;
+    return {
+      ...safe,
+      emailVerificationRequired: this.auth.isEmailVerificationRequired(),
+    };
   }
 
   async updateMe(user: AuthUser, dto: UpdateUserDto) {

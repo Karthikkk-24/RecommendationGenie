@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { api } from '../../lib/utils';
+import { api, postAuthPath, type SessionUser } from '../../lib/utils';
 
 function safeInternalPath(next: string | null): string | null {
   if (!next || !next.startsWith('/') || next.startsWith('//')) {
@@ -33,15 +33,21 @@ function LoginForm() {
           setError(null);
           setPending(true);
           try {
-            const session = await api<{
-              user: { onboardingStatus: string };
-            }>('/auth/login', { method: 'POST', body: JSON.stringify(values) });
+            const session = await api<{ user: SessionUser; emailVerificationRequired: boolean }>(
+              '/auth/login',
+              {
+                method: 'POST',
+                body: JSON.stringify(values),
+              },
+            );
             const next = safeInternalPath(searchParams.get('next'));
-            if (session.user.onboardingStatus !== 'COMPLETED') {
-              router.push('/onboarding');
-              return;
-            }
-            router.push(next ?? '/app');
+            router.push(
+              postAuthPath(
+                { ...session.user, emailVerificationRequired: session.emailVerificationRequired },
+                next,
+                session.emailVerificationRequired,
+              ),
+            );
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');
           } finally {

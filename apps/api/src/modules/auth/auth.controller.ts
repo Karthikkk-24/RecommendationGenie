@@ -14,7 +14,10 @@ export class AuthController {
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const session = await this.auth.register(dto);
     this.setCookies(res, session.accessToken, session.refreshToken);
-    return { user: session.user };
+    return {
+      user: session.user,
+      emailVerificationRequired: this.auth.isEmailVerificationRequired(),
+    };
   }
 
   @Post('login')
@@ -22,7 +25,10 @@ export class AuthController {
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const session = await this.auth.login(dto);
     this.setCookies(res, session.accessToken, session.refreshToken);
-    return { user: session.user };
+    return {
+      user: session.user,
+      emailVerificationRequired: this.auth.isEmailVerificationRequired(),
+    };
   }
 
   @Post('logout')

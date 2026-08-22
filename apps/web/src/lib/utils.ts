@@ -4,6 +4,52 @@ export function cn(...values: Array<string | false | null | undefined>): string 
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: { message: string; code?: string } };
 
+export class ApiError extends Error {
+  readonly code?: string;
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+  }
+}
+
+export type SessionUser = {
+  id: string;
+  email: string;
+  onboardingStatus: string;
+  emailVerifiedAt: string | null;
+  emailVerificationRequired?: boolean;
+};
+
+export function isEmailVerified(user: { emailVerifiedAt: string | null }): boolean {
+  return user.emailVerifiedAt !== null;
+}
+
+export function needsEmailVerification(user: {
+  emailVerifiedAt: string | null;
+  emailVerificationRequired?: boolean;
+}): boolean {
+  return Boolean(user.emailVerificationRequired) && !isEmailVerified(user);
+}
+
+export function postAuthPath(
+  user: SessionUser,
+  next: string | null,
+  emailVerificationRequired = user.emailVerificationRequired ?? false,
+): string {
+  if (emailVerificationRequired && !isEmailVerified(user)) {
+    return `/verify-email?pending=1&email=${encodeURIComponent(user.email)}`;
+  }
+  if (user.onboardingStatus !== 'COMPLETED') {
+    return '/onboarding';
+  }
+  if (next && next.startsWith('/') && !next.startsWith('//')) {
+    return next;
+  }
+  return '/app';
+}
+
 export const SESSION_EXPIRED_EVENT = 'rg:session-expired';
 
 let refreshInFlight: Promise<boolean> | null = null;
@@ -67,7 +113,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
   const json = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || json.success === false) {
-    throw new Error(json.error?.message ?? 'Request failed');
+    throw new ApiError(json.error?.message ?? 'Request failed', json.error?.code);
   }
   return (json.data ?? json) as T;
 }
