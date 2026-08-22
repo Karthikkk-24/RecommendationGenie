@@ -107,16 +107,18 @@ export default function OnboardingPage() {
         return;
       }
       if (fromStep === 1) {
-        if (selected.length === 0) {
-          throw new Error('Pick at least one title you love.');
+        if (selected.length > 0) {
+          await api('/onboarding/selections', {
+            method: 'POST',
+            body: JSON.stringify({ mediaItemIds: selected }),
+          });
         }
-        await api('/onboarding/selections', {
-          method: 'POST',
-          body: JSON.stringify({ mediaItemIds: selected }),
-        });
         return;
       }
       if (fromStep === 2) {
+        if (selected.length === 0) {
+          return;
+        }
         const payload = selected.map((id) => ({
           mediaItemId: id,
           rating: ratings[id] ?? 5,
@@ -161,6 +163,10 @@ export default function OnboardingPage() {
     },
     onSuccess: (_data, fromStep) => {
       if (fromStep < 5) {
+        if (fromStep === 1 && selected.length === 0) {
+          setStep(3);
+          return;
+        }
         setStep((value) => value + 1);
       }
     },
@@ -218,8 +224,8 @@ export default function OnboardingPage() {
           {popular.length === 0 ? (
             <Card>
               <p className="text-sm text-[var(--muted)]">
-                No popular titles are available yet. Seed the catalog or try again later — you can still continue after
-                picking preferences.
+                No popular titles are available yet. You can skip this step and continue with genre preferences —
+                Genie will fill your catalog as you search.
               </p>
             </Card>
           ) : (
@@ -418,7 +424,11 @@ export default function OnboardingPage() {
         ) : null}
         {step < 5 ? (
           <Button type="button" onClick={() => advance.mutate(step)} disabled={advance.isPending}>
-            {advance.isPending ? 'Saving…' : 'Continue'}
+            {advance.isPending
+              ? 'Saving…'
+              : step === 1 && popular.length === 0
+                ? 'Skip for now'
+                : 'Continue'}
           </Button>
         ) : null}
         {step === 5 ? (
