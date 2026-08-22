@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { AiModule } from '../../modules/ai/ai.module';
 import { EmbeddingModule } from '../../modules/embedding/embedding.module';
+import { MediaModule } from '../../modules/media/media.module';
 import { InlineJobQueue } from './job-queue';
 import { JobHandlersService } from './job-handlers.service';
 
@@ -8,7 +9,7 @@ export const JOB_QUEUE = 'JOB_QUEUE';
 
 @Global()
 @Module({
-  imports: [EmbeddingModule, AiModule],
+  imports: [EmbeddingModule, AiModule, MediaModule],
   providers: [
     { provide: JOB_QUEUE, useClass: InlineJobQueue },
     JobHandlersService,
