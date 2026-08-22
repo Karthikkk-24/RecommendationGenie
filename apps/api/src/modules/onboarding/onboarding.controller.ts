@@ -3,6 +3,7 @@ import { CurrentUser, type AuthUser } from '../../common/decorators/current-user
 import { EmailVerifiedGuard } from '../../common/guards/email-verified.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import {
+  OnboardingCalibrateDto,
   OnboardingPreferencesDto,
   OnboardingRatingsDto,
   OnboardingSelectionsDto,
@@ -43,5 +44,10 @@ export class OnboardingController {
   @Post('complete')
   complete(@CurrentUser() user: AuthUser) {
     return this.onboarding.complete(user.id);
+  }
+
+  @Post('calibrate')
+  calibrate(@CurrentUser() user: AuthUser, @Body() dto: OnboardingCalibrateDto) {
+    return this.onboarding.calibrate(user.id, dto);
   }
 }

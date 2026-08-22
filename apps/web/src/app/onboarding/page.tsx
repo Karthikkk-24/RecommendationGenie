@@ -179,7 +179,23 @@ export default function OnboardingPage() {
     },
   });
 
-  const finish = () => {
+  const finish = async () => {
+    if (calibrateFeedback) {
+      const feedbackMap = {
+        'Too safe': 'TOO_SAFE',
+        'Just right': 'JUST_RIGHT',
+        'Too weird': 'TOO_WEIRD',
+      } as const;
+      try {
+        await api('/onboarding/calibrate', {
+          method: 'POST',
+          body: JSON.stringify({ feedback: feedbackMap[calibrateFeedback as keyof typeof feedbackMap] }),
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not save calibration');
+        return;
+      }
+    }
     router.push('/app/recommendations');
   };
 

@@ -5,6 +5,7 @@ import { MediaService } from '../media/media.service';
 import { RecommendationService } from '../recommendation/recommendation.service';
 import { TasteService } from '../taste/taste.service';
 import type {
+  OnboardingCalibrateDto,
   OnboardingPreferencesDto,
   OnboardingRatingsDto,
   OnboardingSelectionsDto,
@@ -112,5 +113,32 @@ export class OnboardingService {
     });
     await this.taste.snapshot(userId);
     return this.recommendations.generate(userId, { mode: 'FOR_YOU', count: 10 });
+  }
+
+  async calibrate(userId: string, dto: OnboardingCalibrateDto) {
+    await this.taste.applyCalibration(userId, dto.feedback);
+    const profile = await this.prisma.client.profile.findUnique({ where: { userId } });
+    const onboarding =
+      profile?.onboarding && typeof profile.onboarding === 'object' && !Array.isArray(profile.onboarding)
+        ? (profile.onboarding as Record<string, unknown>)
+        : {};
+    await this.prisma.client.profile.upsert({
+      where: { userId },
+      update: {
+        onboarding: {
+          ...onboarding,
+          calibrationFeedback: dto.feedback,
+          calibratedAt: new Date().toISOString(),
+        },
+      },
+      create: {
+        userId,
+        onboarding: {
+          calibrationFeedback: dto.feedback,
+          calibratedAt: new Date().toISOString(),
+        },
+      },
+    });
+    return { ok: true, feedback: dto.feedback };
   }
 }
