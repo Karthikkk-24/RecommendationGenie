@@ -1,8 +1,14 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
 import { FeedbackControl } from '../../../components/recommendations/feedback-control';
+import {
+  GenerateFilters,
+  toGeneratePayload,
+  type GenerateFilterState,
+} from '../../../components/recommendations/generate-filters';
 import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -29,6 +35,7 @@ type RecResponse = {
 
 export default function RecommendationsPage() {
   const queryClient = useQueryClient();
+  const [filters, setFilters] = useState<GenerateFilterState>({ count: 10 });
   const recs = useQuery({
     queryKey: ['recs'],
     queryFn: () => api<RecResponse>('/recommendations?mode=FOR_YOU'),
@@ -37,7 +44,7 @@ export default function RecommendationsPage() {
     mutationFn: () =>
       api<RecResponse>('/recommendations/generate', {
         method: 'POST',
-        body: JSON.stringify({ mode: 'FOR_YOU' }),
+        body: JSON.stringify(toGeneratePayload({ mode: 'FOR_YOU' }, filters)),
       }),
     onSuccess: (data) => {
       queryClient.setQueryData(['recs'], data);
@@ -55,6 +62,7 @@ export default function RecommendationsPage() {
           {generate.isPending ? 'Generating…' : items.length ? 'Refresh' : 'Generate recommendations'}
         </Button>
       </div>
+      <GenerateFilters filters={filters} onChange={setFilters} />
 
       {recs.isError || generate.isError ? (
         <Card>

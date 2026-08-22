@@ -4,6 +4,11 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
 import { FeedbackControl } from '../../../components/recommendations/feedback-control';
+import {
+  GenerateFilters,
+  toGeneratePayload,
+  type GenerateFilterState,
+} from '../../../components/recommendations/generate-filters';
 import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -44,6 +49,7 @@ export default function DiscoverPage() {
   const [debouncedSimilarQuery, setDebouncedSimilarQuery] = useState('');
   const [similarToId, setSimilarToId] = useState('');
   const [similarToTitle, setSimilarToTitle] = useState('');
+  const [filters, setFilters] = useState<GenerateFilterState>({ count: 10 });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -67,11 +73,16 @@ export default function DiscoverPage() {
     mutationFn: (mode: (typeof modes)[number]) =>
       api<{ items: RecItem[] }>('/recommendations/generate', {
         method: 'POST',
-        body: JSON.stringify({
-          mode,
-          ...(mode === 'MOOD' ? { mood } : {}),
-          ...(mode === 'SIMILAR_TO' ? { similarToId: similarToId || undefined } : {}),
-        }),
+        body: JSON.stringify(
+          toGeneratePayload(
+            {
+              mode,
+              ...(mode === 'MOOD' ? { mood } : {}),
+              ...(mode === 'SIMILAR_TO' ? { similarToId: similarToId || undefined } : {}),
+            },
+            filters,
+          ),
+        ),
       }),
     onMutate: (mode) => {
       setActiveMode(mode);
@@ -99,6 +110,8 @@ export default function DiscoverPage() {
           </Button>
         ))}
       </div>
+
+      <GenerateFilters filters={filters} onChange={setFilters} />
 
       <div className="flex flex-wrap items-end gap-4">
         <label className="space-y-1 text-sm">
