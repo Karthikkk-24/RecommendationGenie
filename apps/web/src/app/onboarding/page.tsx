@@ -46,6 +46,7 @@ export default function OnboardingPage() {
   const [preferredThemes, setPreferredThemes] = useState<string[]>(['psychological']);
   const [complexity, setComplexity] = useState(0.4);
   const [pacing, setPacing] = useState(0.2);
+  const [preferredTone, setPreferredTone] = useState<'light' | 'neutral' | 'dark'>('neutral');
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<RecPreview | null>(null);
@@ -138,6 +139,7 @@ export default function OnboardingPage() {
             preferredThemes,
             preferredComplexity: complexity,
             preferredPacing: pacing,
+            preferredTone: preferredTone === 'neutral' ? undefined : preferredTone,
           }),
         });
         return;
@@ -152,6 +154,7 @@ export default function OnboardingPage() {
             preferredThemes,
             preferredComplexity: complexity,
             preferredPacing: pacing,
+            preferredTone: preferredTone === 'neutral' ? undefined : preferredTone,
           }),
         });
         return;
@@ -348,6 +351,21 @@ export default function OnboardingPage() {
                   className={`rounded-full border px-4 py-2 ${preferredThemes.includes(theme) ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
                 >
                   {theme}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-3 text-sm text-[var(--muted)]">Preferred tone</p>
+            <div className="flex flex-wrap gap-3">
+              {(['light', 'neutral', 'dark'] as const).map((tone) => (
+                <button
+                  key={tone}
+                  type="button"
+                  onClick={() => setPreferredTone(tone)}
+                  className={`rounded-full border px-4 py-2 capitalize ${preferredTone === tone ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
+                >
+                  {tone}
                 </button>
               ))}
             </div>
