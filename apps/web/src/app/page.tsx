@@ -66,7 +66,7 @@ async function loadSamples(): Promise<SampleCard[]> {
           id: match.id,
           title: match.title,
           type: typeLabels[match.type] ?? match.type,
-          line: match.description ?? match.genres.slice(0, 2).join(' · ') || 'Popular on Genie',
+          line: (match.description ?? match.genres.slice(0, 2).join(' · ')) || 'Popular on Genie',
         });
       }
     }
