@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { MediaType } from '@recommendation-genie/types';
 import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { expandCrossMediaKeys } from '../recommendation/cross-media-map';
 import { IgdbGameProvider } from './providers/igdb.provider';
 import type { MediaProvider, NormalizedMedia } from './providers/media-provider';
 import { MockMediaProvider } from './providers/mock.provider';
@@ -123,7 +124,11 @@ export class MediaService {
 
     const source = await this.prisma.client.mediaItem.findUnique({
       where: { id },
-      include: { sources: true, genres: { include: { genre: true } } },
+      include: {
+        sources: true,
+        genres: { include: { genre: true } },
+        tags: { include: { tag: true } },
+      },
     });
     if (!source) {
       return [];
@@ -147,12 +152,17 @@ export class MediaService {
       return refreshed.map((row) => this.toCard(row.to));
     }
 
-    const genreIds = source.genres.map((g) => g.genreId);
+    const crossKeys = expandCrossMediaKeys([
+      ...source.genres.map((g) => g.genre.name),
+      ...source.tags.map((t) => t.tag.name),
+    ]);
     const neighbors = await this.prisma.client.mediaItem.findMany({
       where: {
         id: { not: id },
-        type: source.type,
-        genres: { some: { genreId: { in: genreIds } } },
+        OR: [
+          { genres: { some: { genre: { name: { in: crossKeys } } } } },
+          { tags: { some: { tag: { name: { in: crossKeys } } } } },
+        ],
       },
       include: this.cardInclude(),
       take: 12,
