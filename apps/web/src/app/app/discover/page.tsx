@@ -1,6 +1,7 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
 import { FeedbackControl } from '../../../components/recommendations/feedback-control';
@@ -9,6 +10,7 @@ import {
   toGeneratePayload,
   type GenerateFilterState,
 } from '../../../components/recommendations/generate-filters';
+import { RecommendationReason } from '../../../components/recommendations/recommendation-bits';
 import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -21,6 +23,7 @@ const moods = ['CHILL', 'ADRENALINE', 'EMOTIONAL', 'DARK', 'FUNNY', 'MIND_BENDIN
 type RecItem = {
   id: string;
   explanation?: string;
+  reason?: string;
   media: MediaCardData;
   scores: {
     final: number;
@@ -35,6 +38,8 @@ type RecItem = {
   };
 };
 
+type RecResponse = { items: RecItem[] };
+
 function flattenSearchResults(data?: { movies: MediaCardData[]; games: MediaCardData[]; music: MediaCardData[] }) {
   if (!data) {
     return [];
@@ -43,7 +48,8 @@ function flattenSearchResults(data?: { movies: MediaCardData[]; games: MediaCard
 }
 
 export default function DiscoverPage() {
-  const [activeMode, setActiveMode] = useState<(typeof modes)[number] | null>(null);
+  const queryClient = useQueryClient();
+  const [activeMode, setActiveMode] = useState<(typeof modes)[number]>('HIDDEN_GEMS');
   const [mood, setMood] = useState<(typeof moods)[number]>('CHILL');
   const [similarQuery, setSimilarQuery] = useState('');
   const [debouncedSimilarQuery, setDebouncedSimilarQuery] = useState('');
@@ -60,6 +66,11 @@ export default function DiscoverPage() {
     };
   }, []);
 
+  const modeRecs = useQuery({
+    queryKey: ['recs', activeMode],
+    queryFn: () => api<RecResponse>(`/recommendations?mode=${activeMode}`),
+  });
+
   const similarSearch = useQuery({
     queryKey: ['discover-similar-search', debouncedSimilarQuery],
     enabled: debouncedSimilarQuery.length > 1,
@@ -71,7 +82,7 @@ export default function DiscoverPage() {
 
   const generate = useMutation({
     mutationFn: (mode: (typeof modes)[number]) =>
-      api<{ items: RecItem[] }>('/recommendations/generate', {
+      api<RecResponse>('/recommendations/generate', {
         method: 'POST',
         body: JSON.stringify(
           toGeneratePayload(
@@ -84,12 +95,14 @@ export default function DiscoverPage() {
           ),
         ),
       }),
-    onMutate: (mode) => {
-      setActiveMode(mode);
+    onSuccess: (data, mode) => {
+      queryClient.setQueryData(['recs', mode], data);
     },
   });
 
   const similarResults = flattenSearchResults(similarSearch.data);
+  const items = generate.data?.items ?? modeRecs.data?.items ?? [];
+  const isShortlistEmpty = activeMode === 'SHORTLIST' && !generate.isPending && items.length === 0;
 
   return (
     <div className="space-y-6">
@@ -104,7 +117,12 @@ export default function DiscoverPage() {
             type="button"
             variant={activeMode === mode ? undefined : 'ghost'}
             disabled={generate.isPending || (mode === 'SIMILAR_TO' && !similarToId)}
-            onClick={() => generate.mutate(mode)}
+            onClick={() => {
+              setActiveMode(mode);
+              if (mode !== 'SIMILAR_TO' || similarToId) {
+                generate.mutate(mode);
+              }
+            }}
           >
             {mode.replaceAll('_', ' ')}
           </Button>
@@ -188,7 +206,7 @@ export default function DiscoverPage() {
 
       {generate.isPending ? (
         <Card>
-          <p className="text-sm text-[var(--muted)]">Generating {activeMode?.replaceAll('_', ' ')}…</p>
+          <p className="text-sm text-[var(--muted)]">Generating {activeMode.replaceAll('_', ' ')}…</p>
         </Card>
       ) : null}
 
@@ -200,18 +218,28 @@ export default function DiscoverPage() {
         </Card>
       ) : null}
 
-      {!generate.isPending && generate.isSuccess && generate.data.items.length === 0 ? (
+      {isShortlistEmpty ? (
+        <Card className="space-y-3">
+          <p className="text-sm text-[var(--muted)]">
+            Your shortlist is empty. Save titles from recommendations or media pages to build a SHORTLIST batch.
+          </p>
+          <Button href="/app/library">Open library</Button>
+        </Card>
+      ) : null}
+
+      {!generate.isPending && !isShortlistEmpty && generate.isSuccess && items.length === 0 ? (
         <Card>
           <p className="text-sm text-[var(--muted)]">No candidates for this mode yet.</p>
         </Card>
       ) : null}
 
       <div className="space-y-4">
-        {generate.data?.items.map((item) => (
+        {items.map((item) => (
           <Card key={item.id} className="grid gap-4 md:grid-cols-[160px_1fr]">
-            <MediaCard item={item.media} score={item.scores.final} />
+            <MediaCard item={item.media} score={item.scores.final} showSave />
             <div>
-              <p className="text-sm text-[var(--muted)]">{item.explanation}</p>
+              {item.reason ? <RecommendationReason text={item.reason} /> : null}
+              {item.explanation ? <p className="text-sm text-[var(--muted)]">{item.explanation}</p> : null}
               <ScoreBreakdown scores={item.scores} className="mt-3" />
               <div className="mt-4">
                 <FeedbackControl mediaItemId={item.media.id} recommendationItemId={item.id} />

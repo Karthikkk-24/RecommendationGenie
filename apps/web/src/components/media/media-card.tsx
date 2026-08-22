@@ -1,6 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import type { MouseEvent } from 'react';
+import { useState } from 'react';
+import { api } from '../../lib/utils';
 import { Badge } from '../ui/card';
 
 export type MediaCardData = {
@@ -16,13 +20,60 @@ export function MediaCard({
   item,
   score,
   explanation,
+  showSave,
 }: {
   item: MediaCardData;
   score?: number;
   explanation?: string;
+  showSave?: boolean;
 }) {
+  const router = useRouter();
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const trackClick = () => {
+    void api('/interactions', {
+      method: 'POST',
+      body: JSON.stringify({ mediaItemId: item.id, type: 'CLICK' }),
+    }).catch(() => undefined);
+  };
+
+  const handleSave = async (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (saved || saving) {
+      return;
+    }
+    setSaving(true);
+    try {
+      await api('/library', {
+        method: 'POST',
+        body: JSON.stringify({ mediaItemId: item.id }),
+      });
+      setSaved(true);
+    } catch {
+      try {
+        await api('/interactions', {
+          method: 'POST',
+          body: JSON.stringify({ mediaItemId: item.id, type: 'SAVE' }),
+        });
+        setSaved(true);
+      } catch {
+        setSaving(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <Link href={`/media/${item.id}`} className="group block min-w-[180px] max-w-[220px]">
+    <Link
+      href={`/media/${item.id}`}
+      className="group relative block min-w-[180px] max-w-[220px]"
+      onClick={() => {
+        trackClick();
+      }}
+    >
       <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-black/40">
         <div
           className="aspect-[2/3] bg-cover bg-center transition duration-500 group-hover:scale-105"
@@ -33,6 +84,16 @@ export function MediaCard({
           }}
         />
       </div>
+      {showSave ? (
+        <button
+          type="button"
+          className="absolute right-2 top-2 rounded-full border border-[var(--line)] bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide text-[var(--gold)] hover:border-[var(--gold)]"
+          disabled={saved || saving}
+          onClick={(event) => void handleSave(event)}
+        >
+          {saved ? 'Saved' : saving ? '…' : 'Save'}
+        </button>
+      ) : null}
       <div className="mt-3 space-y-1">
         <div className="flex items-center justify-between gap-2">
           <Badge>{item.type}</Badge>
@@ -48,11 +109,11 @@ export function MediaCard({
   );
 }
 
-export function MediaGrid({ items }: { items: MediaCardData[] }) {
+export function MediaGrid({ items, showSave }: { items: MediaCardData[]; showSave?: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {items.map((item) => (
-        <MediaCard key={item.id} item={item} />
+        <MediaCard key={item.id} item={item} showSave={showSave} />
       ))}
     </div>
   );
