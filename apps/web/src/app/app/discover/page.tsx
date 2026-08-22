@@ -1,7 +1,7 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
 import { FeedbackControl } from '../../../components/recommendations/feedback-control';
 import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
@@ -30,10 +30,38 @@ type RecItem = {
   };
 };
 
+function flattenSearchResults(data?: { movies: MediaCardData[]; games: MediaCardData[]; music: MediaCardData[] }) {
+  if (!data) {
+    return [];
+  }
+  return [...data.movies, ...data.games, ...data.music];
+}
+
 export default function DiscoverPage() {
   const [activeMode, setActiveMode] = useState<(typeof modes)[number] | null>(null);
   const [mood, setMood] = useState<(typeof moods)[number]>('CHILL');
+  const [similarQuery, setSimilarQuery] = useState('');
+  const [debouncedSimilarQuery, setDebouncedSimilarQuery] = useState('');
   const [similarToId, setSimilarToId] = useState('');
+  const [similarToTitle, setSimilarToTitle] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  const similarSearch = useQuery({
+    queryKey: ['discover-similar-search', debouncedSimilarQuery],
+    enabled: debouncedSimilarQuery.length > 1,
+    queryFn: () =>
+      api<{ movies: MediaCardData[]; games: MediaCardData[]; music: MediaCardData[] }>(
+        `/search?q=${encodeURIComponent(debouncedSimilarQuery)}`,
+      ),
+  });
 
   const generate = useMutation({
     mutationFn: (mode: (typeof modes)[number]) =>
@@ -42,13 +70,15 @@ export default function DiscoverPage() {
         body: JSON.stringify({
           mode,
           ...(mode === 'MOOD' ? { mood } : {}),
-          ...(mode === 'SIMILAR_TO' ? { similarToId: similarToId.trim() || undefined } : {}),
+          ...(mode === 'SIMILAR_TO' ? { similarToId: similarToId || undefined } : {}),
         }),
       }),
     onMutate: (mode) => {
       setActiveMode(mode);
     },
   });
+
+  const similarResults = flattenSearchResults(similarSearch.data);
 
   return (
     <div className="space-y-6">
@@ -62,7 +92,7 @@ export default function DiscoverPage() {
             key={mode}
             type="button"
             variant={activeMode === mode ? undefined : 'ghost'}
-            disabled={generate.isPending}
+            disabled={generate.isPending || (mode === 'SIMILAR_TO' && !similarToId)}
             onClick={() => generate.mutate(mode)}
           >
             {mode.replaceAll('_', ' ')}
@@ -85,14 +115,62 @@ export default function DiscoverPage() {
             ))}
           </select>
         </label>
-        <label className="min-w-[240px] flex-1 space-y-1 text-sm">
-          <span className="text-[var(--muted)]">Similar-to media id</span>
+        <div className="min-w-[280px] flex-1 space-y-2">
+          <label className="block text-sm text-[var(--muted)]">Similar to (for SIMILAR_TO mode)</label>
           <Input
-            value={similarToId}
-            onChange={(event) => setSimilarToId(event.target.value)}
-            placeholder="Paste a media item id for SIMILAR_TO"
+            value={similarQuery}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSimilarQuery(value);
+              if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+              }
+              debounceRef.current = setTimeout(() => setDebouncedSimilarQuery(value), 350);
+            }}
+            placeholder="Search for a movie, game, or album"
           />
-        </label>
+          {similarToTitle ? (
+            <p className="text-xs text-[var(--gold)]">
+              Selected: {similarToTitle}
+              <button
+                type="button"
+                className="ml-2 text-[var(--muted)] underline"
+                onClick={() => {
+                  setSimilarToId('');
+                  setSimilarToTitle('');
+                }}
+              >
+                Clear
+              </button>
+            </p>
+          ) : null}
+          {debouncedSimilarQuery.length > 1 ? (
+            <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-[var(--line)] p-2">
+              {similarSearch.isLoading ? (
+                <p className="text-xs text-[var(--muted)]">Searching…</p>
+              ) : similarResults.length === 0 ? (
+                <p className="text-xs text-[var(--muted)]">No matches yet.</p>
+              ) : (
+                similarResults.slice(0, 8).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--line)] ${
+                      similarToId === item.id ? 'bg-[var(--line)] ring-1 ring-[var(--gold)]' : ''
+                    }`}
+                    onClick={() => {
+                      setSimilarToId(item.id);
+                      setSimilarToTitle(item.title);
+                    }}
+                  >
+                    <span>{item.title}</span>
+                    <span className="text-xs uppercase text-[var(--muted)]">{item.type}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {generate.isPending ? (
