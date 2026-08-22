@@ -70,3 +70,8 @@ export class OnboardingPreferencesDto {
   @IsString({ each: true })
   preferredThemes!: string[];
 }
+
+export class OnboardingCalibrateDto {
+  @IsEnum(['TOO_SAFE', 'JUST_RIGHT', 'TOO_WEIRD'] as const)
+  feedback!: 'TOO_SAFE' | 'JUST_RIGHT' | 'TOO_WEIRD';
+}

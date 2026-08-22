@@ -237,6 +237,30 @@ export class TasteService {
     }
   }
 
+  async applyCalibration(
+    userId: string,
+    feedback: 'TOO_SAFE' | 'JUST_RIGHT' | 'TOO_WEIRD',
+  ): Promise<void> {
+    if (feedback === 'JUST_RIGHT') {
+      return;
+    }
+    const patch =
+      feedback === 'TOO_SAFE'
+        ? {
+            scalar: {
+              novelty: 0.35,
+              mainstreamVsNiche: -0.25,
+            },
+          }
+        : {
+            scalar: {
+              novelty: -0.35,
+              mainstreamVsNiche: 0.2,
+            },
+          };
+    await this.applyPatch(userId, patch, TASTE.maxSingleDelta);
+  }
+
   private async applyPatch(userId: string, patch: PreferencePatch, learningRate: number): Promise<void> {
     const profile = await this.prisma.client.tasteProfile.upsert({
       where: { userId },
