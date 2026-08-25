@@ -13,12 +13,13 @@ type SearchResponse = {
   movies: MediaCardData[];
   games: MediaCardData[];
   music: MediaCardData[];
+  tvShows: MediaCardData[];
   page: number;
   pageSize: number;
   hasMore: boolean;
 };
 
-const types = ['ALL', 'MOVIE', 'GAME', 'MUSIC'] as const;
+const types = ['ALL', 'MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'] as const;
 
 export default function SearchPage() {
   const [q, setQ] = useState('');
@@ -72,6 +73,7 @@ export default function SearchPage() {
             movies: [...current.movies, ...results.data.movies],
             games: [...current.games, ...results.data.games],
             music: [...current.music, ...results.data.music],
+            tvShows: [...(current.tvShows ?? []), ...(results.data.tvShows ?? [])],
           }
         : results.data,
     );
@@ -91,13 +93,15 @@ export default function SearchPage() {
         ? (data?.games ?? [])
         : type === 'MUSIC'
           ? (data?.music ?? [])
-          : [];
+          : type === 'TV_SHOW'
+            ? (data?.tvShows ?? [])
+            : [];
 
   return (
     <div className="space-y-8">
       <h1 className="font-serif text-4xl">Search</h1>
       <Input
-        placeholder="Search movies, games, music"
+        placeholder="Search movies, games, music, TV shows"
         value={q}
         onChange={(event) => {
           const value = event.target.value;
@@ -153,6 +157,10 @@ export default function SearchPage() {
           <section>
             <h2 className="mb-3 font-serif text-2xl">Music</h2>
             <MediaGrid items={data?.music ?? []} showSave />
+          </section>
+          <section>
+            <h2 className="mb-3 font-serif text-2xl">TV Shows</h2>
+            <MediaGrid items={data?.tvShows ?? []} showSave />
           </section>
         </>
       ) : (

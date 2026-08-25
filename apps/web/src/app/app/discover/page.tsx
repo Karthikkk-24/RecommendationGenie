@@ -40,11 +40,16 @@ type RecItem = {
 
 type RecResponse = { items: RecItem[] };
 
-function flattenSearchResults(data?: { movies: MediaCardData[]; games: MediaCardData[]; music: MediaCardData[] }) {
+function flattenSearchResults(data?: {
+  movies: MediaCardData[];
+  games: MediaCardData[];
+  music: MediaCardData[];
+  tvShows?: MediaCardData[];
+}) {
   if (!data) {
     return [];
   }
-  return [...data.movies, ...data.games, ...data.music];
+  return [...data.movies, ...data.games, ...data.music, ...(data.tvShows ?? [])];
 }
 
 export default function DiscoverPage() {
@@ -75,7 +80,7 @@ export default function DiscoverPage() {
     queryKey: ['discover-similar-search', debouncedSimilarQuery],
     enabled: debouncedSimilarQuery.length > 1,
     queryFn: () =>
-      api<{ movies: MediaCardData[]; games: MediaCardData[]; music: MediaCardData[] }>(
+      api<{ movies: MediaCardData[]; games: MediaCardData[]; music: MediaCardData[]; tvShows?: MediaCardData[] }>(
         `/search?q=${encodeURIComponent(debouncedSimilarQuery)}`,
       ),
   });
@@ -160,7 +165,7 @@ export default function DiscoverPage() {
               }
               debounceRef.current = setTimeout(() => setDebouncedSimilarQuery(value), 350);
             }}
-            placeholder="Search for a movie, game, or album"
+            placeholder="Search for a movie, game, album, or TV show"
           />
           {similarToTitle ? (
             <p className="text-xs text-[var(--gold)]">
