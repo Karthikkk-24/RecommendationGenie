@@ -58,8 +58,9 @@ export function FeedbackControl({
           <button
             key={item.action}
             type="button"
+            disabled={mutation.isPending}
             onClick={() => mutation.mutate({ action: item.action })}
-            className="rounded-full border border-[var(--line)] px-3 py-1 text-xs text-[var(--muted)] hover:border-[var(--gold)] hover:text-[var(--gold)]"
+            className="rounded-full border border-[var(--line)] px-3 py-1 text-xs text-[var(--muted)] hover:border-[var(--gold)] hover:text-[var(--gold)] disabled:opacity-40"
           >
             {item.label}
           </button>
@@ -70,6 +71,7 @@ export function FeedbackControl({
           <button
             key={reason}
             type="button"
+            disabled={mutation.isPending}
             onClick={() => {
               if (reason === 'OTHER') {
                 setOtherOpen(true);
@@ -77,7 +79,7 @@ export function FeedbackControl({
               }
               mutation.mutate({ action: 'NOT_FOR_ME', reason });
             }}
-            className="text-[10px] uppercase tracking-wider text-[var(--muted)] hover:text-[var(--fg)]"
+            className="text-[10px] uppercase tracking-wider text-[var(--muted)] hover:text-[var(--fg)] disabled:opacity-40"
           >
             {reason.replaceAll('_', ' ').toLowerCase()}
           </button>
@@ -116,6 +118,15 @@ export function FeedbackControl({
             Cancel
           </button>
         </div>
+      ) : null}
+      {mutation.isPending ? <p className="text-xs text-[var(--muted)]">Saving feedback…</p> : null}
+      {mutation.isSuccess && !mutation.isPending ? (
+        <p className="text-xs text-[var(--gold)]">Thanks — Genie noted that.</p>
+      ) : null}
+      {mutation.isError ? (
+        <p className="text-xs text-red-400">
+          {mutation.error instanceof Error ? mutation.error.message : 'Could not save feedback.'}
+        </p>
       ) : null}
     </div>
   );
