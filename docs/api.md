@@ -23,13 +23,13 @@ Auth cookies: `rg_access`, `rg_refresh`. Refresh tokens are opaque (stored hashe
 | POST | /auth/verify-email | |
 | POST | /auth/resend-verification | |
 | POST | /auth/change-password | auth required; rotates cookies |
-| GET | /users/me | includes nested notification preference |
+| GET | /users/me | includes nested profile, media preference, and notification preference |
 | PATCH | /users/me | |
 | PATCH | /users/me/media-types | preferred media types |
-| GET | /users/me/notification-preferences | |
+| GET | /users/me/notification-preferences | available for clients; web Settings uses nested data from `GET /users/me` |
 | PATCH | /users/me/notification-preferences | |
 | DELETE | /users/me | |
-| GET | /profiles/me | |
+| GET | /profiles/me | available for clients; web Settings loads profile via `GET /users/me` and only PATCHes here |
 | PATCH | /profiles/me | |
 | GET | /media/search | legacy alias |
 | GET | /media/popular | |
