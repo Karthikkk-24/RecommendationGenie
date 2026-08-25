@@ -7,6 +7,8 @@ import { expandCrossMediaKeys } from './cross-media-map';
 
 type TypeFilter = MediaType | MediaType[] | undefined;
 
+const DEFAULT_ENABLED_TYPES: MediaType[] = ['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'];
+
 const MOOD_FILTERS: Record<
   Mood,
   {
@@ -73,12 +75,18 @@ export class CandidateGenerationService {
     input: GenerateRecommendationsInput,
   ): Promise<TypeFilter> {
     if (input.mode === 'SURPRISE_ME' && !input.mediaType) {
-      // Still honor hard media-type bans even in surprise mode.
+      // Honor enabled media types and hard bans; do not hardcode a TV-less set.
       const banned = await this.bannedMediaTypes(userId);
-      if (banned.size === 0) {
+      const preference = await this.prisma.client.userPreference.findUnique({
+        where: { userId },
+        select: { enabledMediaTypes: true },
+      });
+      const enabled = (preference?.enabledMediaTypes ?? []) as MediaType[];
+      if (banned.size === 0 && enabled.length === 0) {
         return undefined;
       }
-      const allowed = (['MOVIE', 'GAME', 'MUSIC'] as MediaType[]).filter((type) => !banned.has(type));
+      const base = enabled.length ? enabled : DEFAULT_ENABLED_TYPES;
+      const allowed = base.filter((type) => !banned.has(type));
       return allowed.length ? allowed : undefined;
     }
     if (input.mediaType) {
@@ -94,7 +102,7 @@ export class CandidateGenerationService {
     });
     const banned = await this.bannedMediaTypes(userId);
     const enabled = (preference?.enabledMediaTypes ?? []) as MediaType[];
-    const filtered = (enabled.length ? enabled : (['MOVIE', 'GAME', 'MUSIC'] as MediaType[])).filter(
+    const filtered = (enabled.length ? enabled : DEFAULT_ENABLED_TYPES).filter(
       (type) => !banned.has(type),
     );
     if (filtered.length === 0) {
