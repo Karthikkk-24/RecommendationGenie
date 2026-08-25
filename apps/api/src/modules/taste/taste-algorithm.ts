@@ -64,12 +64,26 @@ export type PreferencePatch = {
   features?: Array<{ featureType: 'GENRE' | 'THEME' | 'TAG' | 'CREATOR' | 'MEDIA_TYPE' | 'PACING'; featureKey: string; signal: number }>;
 };
 
+export function pacingFeatureKey(pacing: number): 'slow' | 'medium' | 'fast' {
+  if (pacing <= -0.25) {
+    return 'slow';
+  }
+  if (pacing >= 0.25) {
+    return 'fast';
+  }
+  return 'medium';
+}
+
 export function patchesFromFeedbackReason(reason: FeedbackReason, context?: { genres?: string[]; creators?: string[] }): PreferencePatch {
   switch (reason) {
     case 'TOO_SLOW':
       return {
         scalar: { pacing: 1 },
-        features: [{ featureType: 'PACING', featureKey: 'slow', signal: -1 }],
+        features: [
+          { featureType: 'PACING', featureKey: 'slow', signal: -1 },
+          { featureType: 'PACING', featureKey: 'fast', signal: 0.6 },
+          { featureType: 'PACING', featureKey: 'medium', signal: 0.3 },
+        ],
       };
     case 'TOO_PREDICTABLE':
       return {
