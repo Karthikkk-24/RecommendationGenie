@@ -59,8 +59,10 @@ export class InteractionsService {
     }
 
     if (dto.type === 'CONSUMED') {
-      await this.prisma.client.consumptionHistory.create({
-        data: { userId, mediaItemId: dto.mediaItemId },
+      await this.prisma.client.consumptionHistory.upsert({
+        where: { userId_mediaItemId: { userId, mediaItemId: dto.mediaItemId } },
+        update: { consumedAt: new Date() },
+        create: { userId, mediaItemId: dto.mediaItemId },
       });
     }
 
