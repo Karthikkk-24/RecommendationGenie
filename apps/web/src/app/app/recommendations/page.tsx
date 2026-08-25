@@ -92,7 +92,7 @@ export default function RecommendationsPage() {
 
       {items.map((item) => (
         <Card key={item.id} className="grid gap-4 md:grid-cols-[160px_1fr]">
-          <MediaCard item={item.media} score={item.scores.final} />
+          <MediaCard item={item.media} score={item.scores.final} showSave />
           <div>
             {item.reason ? <RecommendationReason text={item.reason} /> : null}
             {item.explanation ? <p className="text-sm text-[var(--muted)]">{item.explanation}</p> : null}
