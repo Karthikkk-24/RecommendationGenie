@@ -45,11 +45,22 @@ function flattenSearchResults(data?: {
   games: MediaCardData[];
   music: MediaCardData[];
   tvShows?: MediaCardData[];
+  books?: MediaCardData[];
+  anime?: MediaCardData[];
+  podcasts?: MediaCardData[];
 }) {
   if (!data) {
     return [];
   }
-  return [...data.movies, ...data.games, ...data.music, ...(data.tvShows ?? [])];
+  return [
+    ...data.movies,
+    ...data.games,
+    ...data.music,
+    ...(data.tvShows ?? []),
+    ...(data.books ?? []),
+    ...(data.anime ?? []),
+    ...(data.podcasts ?? []),
+  ];
 }
 
 export default function DiscoverPage() {
@@ -80,9 +91,15 @@ export default function DiscoverPage() {
     queryKey: ['discover-similar-search', debouncedSimilarQuery],
     enabled: debouncedSimilarQuery.length > 1,
     queryFn: () =>
-      api<{ movies: MediaCardData[]; games: MediaCardData[]; music: MediaCardData[]; tvShows?: MediaCardData[] }>(
-        `/search?q=${encodeURIComponent(debouncedSimilarQuery)}`,
-      ),
+      api<{
+        movies: MediaCardData[];
+        games: MediaCardData[];
+        music: MediaCardData[];
+        tvShows?: MediaCardData[];
+        books?: MediaCardData[];
+        anime?: MediaCardData[];
+        podcasts?: MediaCardData[];
+      }>(`/search?q=${encodeURIComponent(debouncedSimilarQuery)}`),
   });
 
   const generate = useMutation({
@@ -165,7 +182,7 @@ export default function DiscoverPage() {
               }
               debounceRef.current = setTimeout(() => setDebouncedSimilarQuery(value), 350);
             }}
-            placeholder="Search for a movie, game, album, or TV show"
+            placeholder="Search for a movie, game, album, TV show, book, anime, or podcast"
           />
           {similarToTitle ? (
             <p className="text-xs text-[var(--gold)]">

@@ -208,7 +208,19 @@ export async function mockProductApi(page: Page, options?: { role?: string; onbo
     }
 
     if (method === 'GET' && path.startsWith('/search')) {
-      return route.fulfill(ok({ movies: [sampleMedia], games: [], music: [], tvShows: [], page: 1, hasMore: false }));
+      return route.fulfill(
+        ok({
+          movies: [sampleMedia],
+          games: [],
+          music: [],
+          tvShows: [],
+          books: [],
+          anime: [],
+          podcasts: [],
+          page: 1,
+          hasMore: false,
+        }),
+      );
     }
 
     return route.fulfill({

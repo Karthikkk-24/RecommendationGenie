@@ -14,12 +14,57 @@ type SearchResponse = {
   games: MediaCardData[];
   music: MediaCardData[];
   tvShows: MediaCardData[];
+  books: MediaCardData[];
+  anime: MediaCardData[];
+  podcasts: MediaCardData[];
   page: number;
   pageSize: number;
   hasMore: boolean;
 };
 
-const types = ['ALL', 'MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'] as const;
+const types = ['ALL', 'MOVIE', 'GAME', 'MUSIC', 'TV_SHOW', 'BOOK', 'ANIME', 'PODCAST'] as const;
+
+const emptyBuckets = (): Pick<
+  SearchResponse,
+  'movies' | 'games' | 'music' | 'tvShows' | 'books' | 'anime' | 'podcasts'
+> => ({
+  movies: [],
+  games: [],
+  music: [],
+  tvShows: [],
+  books: [],
+  anime: [],
+  podcasts: [],
+});
+
+function mergeSearchPages(current: SearchResponse, next: SearchResponse): SearchResponse {
+  return {
+    ...next,
+    movies: [...current.movies, ...next.movies],
+    games: [...current.games, ...next.games],
+    music: [...current.music, ...next.music],
+    tvShows: [...(current.tvShows ?? []), ...(next.tvShows ?? [])],
+    books: [...(current.books ?? []), ...(next.books ?? [])],
+    anime: [...(current.anime ?? []), ...(next.anime ?? [])],
+    podcasts: [...(current.podcasts ?? []), ...(next.podcasts ?? [])],
+  };
+}
+
+function flatForType(data: SearchResponse | null, type: (typeof types)[number]): MediaCardData[] {
+  if (!data || type === 'ALL') {
+    return [];
+  }
+  const buckets = {
+    MOVIE: data.movies,
+    GAME: data.games,
+    MUSIC: data.music,
+    TV_SHOW: data.tvShows ?? [],
+    BOOK: data.books ?? [],
+    ANIME: data.anime ?? [],
+    PODCAST: data.podcasts ?? [],
+  };
+  return buckets[type];
+}
 
 export default function SearchPage() {
   const [q, setQ] = useState('');
@@ -63,19 +108,11 @@ export default function SearchPage() {
       return;
     }
     if (page === 1) {
-      setAccumulated(results.data);
+      setAccumulated({ ...emptyBuckets(), ...results.data });
       return;
     }
     setAccumulated((current) =>
-      current
-        ? {
-            ...results.data,
-            movies: [...current.movies, ...results.data.movies],
-            games: [...current.games, ...results.data.games],
-            music: [...current.music, ...results.data.music],
-            tvShows: [...(current.tvShows ?? []), ...(results.data.tvShows ?? [])],
-          }
-        : results.data,
+      current ? mergeSearchPages(current, results.data) : { ...emptyBuckets(), ...results.data },
     );
   }, [results.data, page]);
 
@@ -86,22 +123,13 @@ export default function SearchPage() {
 
   const data = accumulated;
   const showGrouped = type === 'ALL';
-  const flatItems =
-    type === 'MOVIE'
-      ? (data?.movies ?? [])
-      : type === 'GAME'
-        ? (data?.games ?? [])
-        : type === 'MUSIC'
-          ? (data?.music ?? [])
-          : type === 'TV_SHOW'
-            ? (data?.tvShows ?? [])
-            : [];
+  const flatItems = flatForType(data, type);
 
   return (
     <div className="space-y-8">
       <h1 className="font-serif text-4xl">Search</h1>
       <Input
-        placeholder="Search movies, games, music, TV shows"
+        placeholder="Search movies, games, music, TV, books, anime, podcasts"
         value={q}
         onChange={(event) => {
           const value = event.target.value;
@@ -161,6 +189,18 @@ export default function SearchPage() {
           <section>
             <h2 className="mb-3 font-serif text-2xl">TV Shows</h2>
             <MediaGrid items={data?.tvShows ?? []} showSave />
+          </section>
+          <section>
+            <h2 className="mb-3 font-serif text-2xl">Books</h2>
+            <MediaGrid items={data?.books ?? []} showSave />
+          </section>
+          <section>
+            <h2 className="mb-3 font-serif text-2xl">Anime</h2>
+            <MediaGrid items={data?.anime ?? []} showSave />
+          </section>
+          <section>
+            <h2 className="mb-3 font-serif text-2xl">Podcasts</h2>
+            <MediaGrid items={data?.podcasts ?? []} showSave />
           </section>
         </>
       ) : (
