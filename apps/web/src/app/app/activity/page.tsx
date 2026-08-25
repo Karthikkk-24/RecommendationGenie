@@ -37,7 +37,12 @@ export default function ActivityPage() {
       <section className="space-y-4">
         <h2 className="font-serif text-2xl">Feedback</h2>
         {feedback.isLoading ? <p className="text-sm text-[var(--muted)]">Loading…</p> : null}
-        {(feedback.data ?? []).length === 0 && !feedback.isLoading ? (
+        {feedback.isError ? (
+          <p className="text-sm text-red-400">
+            {feedback.error instanceof Error ? feedback.error.message : 'Could not load feedback.'}
+          </p>
+        ) : null}
+        {(feedback.data ?? []).length === 0 && !feedback.isLoading && !feedback.isError ? (
           <Card>
             <p className="text-sm text-[var(--muted)]">No feedback yet.</p>
           </Card>
@@ -54,7 +59,12 @@ export default function ActivityPage() {
       <section className="space-y-4">
         <h2 className="font-serif text-2xl">Interactions</h2>
         {interactions.isLoading ? <p className="text-sm text-[var(--muted)]">Loading…</p> : null}
-        {(interactions.data ?? []).length === 0 && !interactions.isLoading ? (
+        {interactions.isError ? (
+          <p className="text-sm text-red-400">
+            {interactions.error instanceof Error ? interactions.error.message : 'Could not load interactions.'}
+          </p>
+        ) : null}
+        {(interactions.data ?? []).length === 0 && !interactions.isLoading && !interactions.isError ? (
           <Card>
             <p className="text-sm text-[var(--muted)]">No interactions yet.</p>
           </Card>
