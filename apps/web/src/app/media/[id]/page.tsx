@@ -10,7 +10,7 @@ import { FeedbackControl } from '../../../components/recommendations/feedback-co
 import { ScoreBreakdown } from '../../../components/recommendations/score-breakdown';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
-import { api } from '../../../lib/utils';
+import { api, needsEmailVerification } from '../../../lib/utils';
 
 export default function MediaDetailsPage() {
   const params = useParams<{ id: string }>();
@@ -22,9 +22,19 @@ export default function MediaDetailsPage() {
   const session = useQuery({
     queryKey: ['me'],
     retry: false,
-    queryFn: () => api<{ id: string }>('/users/me'),
+    queryFn: () =>
+      api<{
+        id: string;
+        email: string;
+        onboardingStatus: string;
+        emailVerifiedAt: string | null;
+        emailVerificationRequired?: boolean;
+      }>('/users/me'),
   });
   const isAuthed = session.isSuccess;
+  const needsVerify = Boolean(session.data && needsEmailVerification(session.data));
+  const needsOnboarding = Boolean(session.data && session.data.onboardingStatus !== 'COMPLETED');
+  const canInteract = isAuthed && !needsVerify && !needsOnboarding;
 
   const media = useQuery({
     queryKey: ['media', params.id],
@@ -46,7 +56,7 @@ export default function MediaDetailsPage() {
 
   const interactions = useQuery({
     queryKey: ['interactions-ratings'],
-    enabled: isAuthed,
+    enabled: canInteract,
     queryFn: () => api<Array<{ mediaItemId: string; rating: number }>>('/interactions/ratings'),
   });
 
@@ -58,7 +68,7 @@ export default function MediaDetailsPage() {
   }, [interactions.data, params.id]);
 
   useEffect(() => {
-    if (!isAuthed || !params.id || viewedRef.current) {
+    if (!canInteract || !params.id || viewedRef.current) {
       return;
     }
     viewedRef.current = true;
@@ -66,11 +76,11 @@ export default function MediaDetailsPage() {
       method: 'POST',
       body: JSON.stringify({ mediaItemId: params.id, type: 'VIEW' }),
     }).catch(() => undefined);
-  }, [isAuthed, params.id]);
+  }, [canInteract, params.id]);
 
   const match = useQuery({
     queryKey: ['match', params.id],
-    enabled: Boolean(params.id) && media.isSuccess && isAuthed,
+    enabled: Boolean(params.id) && media.isSuccess && canInteract,
     retry: false,
     queryFn: () =>
       api<{
@@ -156,13 +166,13 @@ export default function MediaDetailsPage() {
           <p className="mt-3 text-sm text-[var(--muted)]">{item.genres.join(' · ')}</p>
           <p className="mt-2 text-sm text-[var(--muted)]">{item.creators.join(', ')}</p>
 
-          {isAuthed && match.data ? (
+          {canInteract && match.data ? (
             <Card className="mt-6">
               <ScoreBreakdown scores={match.data.scores} />
             </Card>
           ) : null}
 
-          {isAuthed && match.isError ? (
+          {canInteract && match.isError ? (
             <p className="mt-4 text-sm text-[var(--muted)]">Match score unavailable right now.</p>
           ) : null}
 
@@ -172,6 +182,20 @@ export default function MediaDetailsPage() {
                 Sign in to see your Genie match percentage and like, save, or rate this title.
               </p>
               <Button href={loginHref}>Log in to interact</Button>
+            </Card>
+          ) : needsVerify ? (
+            <Card className="mt-6 space-y-3">
+              <p className="text-sm text-[var(--muted)]">Verify your email before rating or saving titles.</p>
+              <Button href={`/verify-email?pending=1&email=${encodeURIComponent(session.data?.email ?? '')}`}>
+                Verify email
+              </Button>
+            </Card>
+          ) : needsOnboarding ? (
+            <Card className="mt-6 space-y-3">
+              <p className="text-sm text-[var(--muted)]">
+                Finish onboarding so Genie can personalize ratings and saves.
+              </p>
+              <Button href="/onboarding">Continue onboarding</Button>
             </Card>
           ) : (
             <div className="mt-6 space-y-4">
