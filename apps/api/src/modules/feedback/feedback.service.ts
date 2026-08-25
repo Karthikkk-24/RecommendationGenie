@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { FeedbackAction, InteractionType } from '@recommendation-genie/types';
 import { JOB_QUEUE } from '../../common/jobs/jobs.module';
 import type { JobQueue } from '../../common/jobs/job-queue';
@@ -27,6 +27,26 @@ export class FeedbackService {
   ) {}
 
   async create(userId: string, dto: CreateFeedbackDto) {
+    const media = await this.prisma.client.mediaItem.findUnique({
+      where: { id: dto.mediaItemId },
+      select: { id: true, type: true },
+    });
+    if (!media) {
+      throw new NotFoundException({ code: 'MEDIA_NOT_FOUND', message: 'Media item not found' });
+    }
+    if (dto.recommendationItemId) {
+      const recommendationItem = await this.prisma.client.recommendationItem.findFirst({
+        where: { id: dto.recommendationItemId, generation: { userId } },
+        select: { id: true },
+      });
+      if (!recommendationItem) {
+        throw new NotFoundException({
+          code: 'RECOMMENDATION_ITEM_NOT_FOUND',
+          message: 'Recommendation item not found',
+        });
+      }
+    }
+
     const row = await this.prisma.client.userFeedback.create({
       data: {
         userId,
@@ -45,13 +65,7 @@ export class FeedbackService {
     });
 
     if (dto.action === 'NEVER_THIS_TYPE') {
-      const media = await this.prisma.client.mediaItem.findUnique({
-        where: { id: dto.mediaItemId },
-        select: { type: true },
-      });
-      if (media) {
-        await this.taste.applyMediaTypeBan(userId, media.type);
-      }
+      await this.taste.applyMediaTypeBan(userId, media.type);
     }
 
     if (dto.reason) {
