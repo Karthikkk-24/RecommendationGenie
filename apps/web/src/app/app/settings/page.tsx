@@ -117,6 +117,7 @@ export default function SettingsPage() {
   const logout = useMutation({
     mutationFn: () => api('/auth/logout', { method: 'POST' }),
     onSuccess: () => {
+      queryClient.clear();
       router.push('/');
     },
   });
@@ -124,6 +125,7 @@ export default function SettingsPage() {
   const deleteAccount = useMutation({
     mutationFn: () => api('/users/me', { method: 'DELETE' }),
     onSuccess: () => {
+      queryClient.clear();
       router.push('/');
     },
   });
