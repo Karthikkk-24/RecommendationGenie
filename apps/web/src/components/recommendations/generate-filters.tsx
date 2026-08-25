@@ -62,6 +62,7 @@ export function GenerateFilters({
               timeAvailableMinutes: value ? Number(value) : undefined,
             });
           }}
+          title="Only includes titles with a known runtime at or under the limit"
         >
           {timePresets.map((item) => (
             <option key={item.label} value={item.value ?? ''}>

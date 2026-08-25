@@ -35,12 +35,7 @@ export class RecommendationService {
         id: { in: candidateIds },
         ...(input.language ? { language: input.language } : {}),
         ...(input.timeAvailableMinutes
-          ? {
-              OR: [
-                { runtimeMinutes: null },
-                { runtimeMinutes: { lte: input.timeAvailableMinutes } },
-              ],
-            }
+          ? { runtimeMinutes: { lte: input.timeAvailableMinutes } }
           : {}),
       },
       include: this.media.cardInclude(),
