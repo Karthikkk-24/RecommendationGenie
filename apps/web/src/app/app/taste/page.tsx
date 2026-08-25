@@ -133,7 +133,13 @@ export default function TastePage() {
   return (
     <div className="space-y-6">
       <h1 className="font-serif text-4xl">Taste DNA</h1>
-      <p className="text-[var(--muted)]">{evolution.data?.message}</p>
+      {evolution.isError ? (
+        <p className="text-sm text-red-400">
+          {evolution.error instanceof Error ? evolution.error.message : 'Could not load taste evolution.'}
+        </p>
+      ) : (
+        <p className="text-[var(--muted)]">{evolution.data?.message}</p>
+      )}
       {(evolution.data?.changes?.length ?? 0) > 0 ? (
         <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
           {evolution.data?.changes.map((change) => (
@@ -143,6 +149,11 @@ export default function TastePage() {
             </span>
           ))}
         </div>
+      ) : null}
+      {me.isError ? (
+        <p className="text-sm text-red-400">
+          {me.error instanceof Error ? me.error.message : 'Could not load saved preferences.'}
+        </p>
       ) : null}
       <Card className="space-y-4">
         <h2 className="font-serif text-2xl">Edit taste preferences</h2>
@@ -243,23 +254,50 @@ export default function TastePage() {
           </p>
         ) : null}
       </Card>
-      <div className="grid gap-4 md:grid-cols-3">
-        {[
-          ['Complexity', profile?.complexity],
-          ['Darkness', profile?.darkness],
-          ['Novelty', profile?.novelty],
-          ['Pacing', profile?.pacing],
-          ['Niche', profile?.mainstreamVsNiche],
-        ].map(([label, value]) => (
-          <Card key={String(label)}>
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{label}</p>
-            <p className="mt-2 font-serif text-4xl">{toPercent(value as number)}%</p>
+      {taste.isError ? (
+        <p className="text-sm text-red-400">
+          {taste.error instanceof Error ? taste.error.message : 'Could not load taste profile.'}
+        </p>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              ['Complexity', profile?.complexity],
+              ['Darkness', profile?.darkness],
+              ['Novelty', profile?.novelty],
+              ['Pacing', profile?.pacing],
+              ['Niche', profile?.mainstreamVsNiche],
+            ].map(([label, value]) => (
+              <Card key={String(label)}>
+                <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{label}</p>
+                <p className="mt-2 font-serif text-4xl">{toPercent(value as number)}%</p>
+              </Card>
+            ))}
+          </div>
+          <Card className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={topFeatures.map((f) => ({
+                  name: `${f.featureType}: ${f.featureKey}`,
+                  weight: Math.round((f.weight + 1) * 50),
+                }))}
+              >
+                <XAxis dataKey="name" stroke="#9a9388" />
+                <YAxis stroke="#9a9388" />
+                <Tooltip />
+                <Bar dataKey="weight" fill="#e8c39a" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </Card>
-        ))}
-      </div>
+        </>
+      )}
       <Card className="h-96 space-y-3">
         <p className="text-sm text-[var(--muted)]">30-day taste evolution</p>
-        {chartRows.length < 2 ? (
+        {history.isError ? (
+          <p className="text-sm text-red-400">
+            {history.error instanceof Error ? history.error.message : 'Could not load taste history.'}
+          </p>
+        ) : chartRows.length < 2 ? (
           <p className="text-sm text-[var(--muted)]">
             Rate a few titles and Genie will chart how your scalars move over time.
           </p>
@@ -279,16 +317,6 @@ export default function TastePage() {
             </LineChart>
           </ResponsiveContainer>
         )}
-      </Card>
-      <Card className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={topFeatures.map((f) => ({ name: `${f.featureType}: ${f.featureKey}`, weight: Math.round((f.weight + 1) * 50) }))}>
-            <XAxis dataKey="name" stroke="#9a9388" />
-            <YAxis stroke="#9a9388" />
-            <Tooltip />
-            <Bar dataKey="weight" fill="#e8c39a" radius={[8, 8, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
       </Card>
     </div>
   );

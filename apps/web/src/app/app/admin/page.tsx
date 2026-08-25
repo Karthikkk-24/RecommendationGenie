@@ -54,6 +54,17 @@ export default function AdminPage() {
     return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   }
 
+  if (me.isError) {
+    return (
+      <div className="space-y-3">
+        <h1 className="font-serif text-4xl">Admin</h1>
+        <p className="text-sm text-red-400">
+          {me.error instanceof Error ? me.error.message : 'Could not verify admin access.'}
+        </p>
+      </div>
+    );
+  }
+
   if (me.data?.role !== 'ADMIN') {
     return (
       <div className="space-y-3">
@@ -67,66 +78,89 @@ export default function AdminPage() {
     <div className="space-y-8">
       <h1 className="font-serif text-4xl">Admin</h1>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        {[
-          ['Users', health.data?.users],
-          ['Generations', health.data?.generations],
-          ['AI failures', health.data?.failedAi],
-          ['AI mock mode', health.data?.mockMode ? 'On' : 'Off'],
-        ].map(([label, value]) => (
-          <Card key={String(label)}>
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{label}</p>
-            <p className="mt-2 font-serif text-4xl">{value ?? '—'}</p>
-          </Card>
-        ))}
-      </div>
+      {health.isError ? (
+        <p className="text-sm text-red-400">
+          {health.error instanceof Error ? health.error.message : 'Could not load admin health.'}
+        </p>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-4">
+          {[
+            ['Users', health.data?.users],
+            ['Generations', health.data?.generations],
+            ['AI failures', health.data?.failedAi],
+            ['AI mock mode', health.data?.mockMode ? 'On' : 'Off'],
+          ].map(([label, value]) => (
+            <Card key={String(label)}>
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{label}</p>
+              <p className="mt-2 font-serif text-4xl">{value ?? '—'}</p>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <section className="space-y-3">
         <h2 className="font-serif text-2xl">Algorithm versions</h2>
-        <div className="space-y-2">
-          {(versions.data ?? []).map((row) => (
-            <Card key={row.id} className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-medium">{row.algorithmVersion}</p>
-                <p className="text-xs text-[var(--muted)]">{new Date(row.createdAt).toLocaleString()}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-xs ${row.active ? 'text-[var(--gold)]' : 'text-[var(--muted)]'}`}>
-                  {row.active ? 'Active' : 'Inactive'}
-                </span>
-                {!row.active ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => activate.mutate(row.id)}
-                    disabled={activate.isPending}
-                  >
-                    Activate
-                  </Button>
-                ) : null}
-              </div>
-            </Card>
-          ))}
-          {!versions.isLoading && (versions.data?.length ?? 0) === 0 ? (
-            <p className="text-sm text-[var(--muted)]">No versions seeded yet.</p>
-          ) : null}
-        </div>
+        {versions.isError ? (
+          <p className="text-sm text-red-400">
+            {versions.error instanceof Error ? versions.error.message : 'Could not load algorithm versions.'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {(versions.data ?? []).map((row) => (
+              <Card key={row.id} className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">{row.algorithmVersion}</p>
+                  <p className="text-xs text-[var(--muted)]">{new Date(row.createdAt).toLocaleString()}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs ${row.active ? 'text-[var(--gold)]' : 'text-[var(--muted)]'}`}>
+                    {row.active ? 'Active' : 'Inactive'}
+                  </span>
+                  {!row.active ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => activate.mutate(row.id)}
+                      disabled={activate.isPending}
+                    >
+                      Activate
+                    </Button>
+                  ) : null}
+                </div>
+              </Card>
+            ))}
+            {!versions.isLoading && (versions.data?.length ?? 0) === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No versions seeded yet.</p>
+            ) : null}
+            {activate.isError ? (
+              <p className="text-sm text-red-400">
+                {activate.error instanceof Error ? activate.error.message : 'Could not activate version.'}
+              </p>
+            ) : null}
+          </div>
+        )}
       </section>
 
       <section className="space-y-3">
         <h2 className="font-serif text-2xl">Recent AI failures</h2>
-        <div className="space-y-2">
-          {(failures.data ?? []).map((row) => (
-            <Card key={row.id}>
-              <p className="text-sm font-medium">{row.requestType}</p>
-              <p className="mt-1 text-xs text-red-400">{row.errorMessage ?? 'Unknown error'}</p>
-              <p className="mt-2 text-xs text-[var(--muted)]">{new Date(row.createdAt).toLocaleString()}</p>
-            </Card>
-          ))}
-          {!failures.isLoading && (failures.data?.length ?? 0) === 0 ? (
-            <p className="text-sm text-[var(--muted)]">No recent AI failures.</p>
-          ) : null}
-        </div>
+        {failures.isError ? (
+          <p className="text-sm text-red-400">
+            {failures.error instanceof Error ? failures.error.message : 'Could not load AI failures.'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {(failures.data ?? []).map((row) => (
+              <Card key={row.id}>
+                <p className="text-sm font-medium">{row.requestType}</p>
+                <p className="mt-1 text-xs text-red-400">{row.errorMessage ?? 'Unknown error'}</p>
+                <p className="mt-2 text-xs text-[var(--muted)]">{new Date(row.createdAt).toLocaleString()}</p>
+              </Card>
+            ))}
+            {!failures.isLoading && (failures.data?.length ?? 0) === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No recent AI failures.</p>
+            ) : null}
+          </div>
+        )}
       </section>
     </div>
   );
