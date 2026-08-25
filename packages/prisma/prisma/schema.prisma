@@ -392,6 +392,7 @@ model ConsumptionHistory {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   mediaItem   MediaItem @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, mediaItemId])
   @@index([userId, consumedAt])
 }
 
