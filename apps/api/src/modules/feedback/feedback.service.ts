@@ -82,6 +82,11 @@ export class FeedbackService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 50,
+      include: {
+        mediaItem: {
+          select: { id: true, title: true, type: true },
+        },
+      },
     });
   }
 }

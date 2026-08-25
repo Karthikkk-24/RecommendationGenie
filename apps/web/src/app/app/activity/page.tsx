@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '../../../components/ui/card';
 import { api } from '../../../lib/utils';
@@ -10,6 +11,7 @@ type FeedbackRow = {
   reason: string | null;
   createdAt: string;
   mediaItemId: string;
+  mediaItem: { id: string; title: string; type: string };
 };
 
 type InteractionRow = {
@@ -49,8 +51,12 @@ export default function ActivityPage() {
         ) : null}
         {(feedback.data ?? []).map((row) => (
           <Card key={row.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span className="font-medium">{row.action.replaceAll('_', ' ')}</span>
+            <Link href={`/media/${row.mediaItem.id}`} className="font-medium hover:text-[var(--gold)] hover:underline">
+              {row.mediaItem.title}
+            </Link>
+            <span className="text-[var(--muted)]">{row.action.replaceAll('_', ' ')}</span>
             <span className="text-[var(--muted)]">{row.reason?.replaceAll('_', ' ').toLowerCase() ?? '—'}</span>
+            <span className="text-xs uppercase text-[var(--muted)]">{row.mediaItem.type}</span>
             <span className="text-xs text-[var(--muted)]">{new Date(row.createdAt).toLocaleString()}</span>
           </Card>
         ))}
@@ -71,7 +77,9 @@ export default function ActivityPage() {
         ) : null}
         {(interactions.data ?? []).map((row) => (
           <Card key={row.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span className="font-medium">{row.mediaItem.title}</span>
+            <Link href={`/media/${row.mediaItem.id}`} className="font-medium hover:text-[var(--gold)] hover:underline">
+              {row.mediaItem.title}
+            </Link>
             <span className="text-[var(--muted)]">{row.type}</span>
             <span className="text-xs uppercase text-[var(--muted)]">{row.mediaItem.type}</span>
             <span className="text-xs text-[var(--muted)]">{new Date(row.createdAt).toLocaleString()}</span>
