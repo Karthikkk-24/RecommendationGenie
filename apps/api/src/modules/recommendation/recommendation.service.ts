@@ -33,7 +33,11 @@ export class RecommendationService {
     const items = await this.prisma.client.mediaItem.findMany({
       where: {
         id: { in: candidateIds },
-        ...(input.language ? { language: input.language } : {}),
+        ...(input.language
+          ? {
+              OR: [{ language: input.language }, { language: null }],
+            }
+          : {}),
         ...(input.timeAvailableMinutes
           ? { runtimeMinutes: { lte: input.timeAvailableMinutes } }
           : {}),

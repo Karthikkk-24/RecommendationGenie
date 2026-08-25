@@ -82,6 +82,7 @@ export function GenerateFilters({
               language: event.target.value || undefined,
             })
           }
+          title="Matches the selected language or titles with unknown language (e.g. most music)"
         >
           {languageOptions.map((item) => (
             <option key={item.label} value={item.value}>
