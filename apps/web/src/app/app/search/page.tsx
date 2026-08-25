@@ -172,6 +172,31 @@ export default function SearchPage() {
           </div>
         </section>
       ) : null}
+      {debounced.length > 1 && results.isPending && !data ? (
+        <p className="text-sm text-[var(--muted)]">Searching…</p>
+      ) : null}
+      {results.isError ? (
+        <p className="text-sm text-red-400">
+          {results.error instanceof Error ? results.error.message : 'Search failed. Try again.'}
+        </p>
+      ) : null}
+      {debounced.length > 1 && data && !results.isError
+        ? (() => {
+            const total =
+              (data.movies?.length ?? 0) +
+              (data.games?.length ?? 0) +
+              (data.music?.length ?? 0) +
+              (data.tvShows?.length ?? 0) +
+              (data.books?.length ?? 0) +
+              (data.anime?.length ?? 0) +
+              (data.podcasts?.length ?? 0);
+            return total === 0 && !showGrouped ? (
+              <p className="text-sm text-[var(--muted)]">No results for “{debounced}”.</p>
+            ) : total === 0 && showGrouped ? (
+              <p className="text-sm text-[var(--muted)]">No results for “{debounced}”.</p>
+            ) : null;
+          })()
+        : null}
       {showGrouped ? (
         <>
           <section>

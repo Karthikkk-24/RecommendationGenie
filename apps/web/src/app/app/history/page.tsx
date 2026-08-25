@@ -73,6 +73,17 @@ export default function HistoryPage() {
       <p className="text-[var(--muted)]">
         Match percentages are the stored component scores from that generation — never invented after the fact.
       </p>
+      {history.isPending && generations.length === 0 ? (
+        <p className="text-sm text-[var(--muted)]">Loading history…</p>
+      ) : null}
+      {history.isError ? (
+        <p className="text-sm text-red-400">
+          {history.error instanceof Error ? history.error.message : 'Could not load recommendation history.'}
+        </p>
+      ) : null}
+      {!history.isPending && !history.isError && generations.length === 0 ? (
+        <p className="text-sm text-[var(--muted)]">No recommendation batches yet. Generate a For You list to start.</p>
+      ) : null}
       {generations.map((generation) => (
         <Card key={generation.id}>
           <div className="flex flex-wrap items-center justify-between gap-2">
