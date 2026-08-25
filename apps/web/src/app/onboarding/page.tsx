@@ -63,6 +63,13 @@ export default function OnboardingPage() {
   );
 }
 
+function verifyEmailPath(email?: string | null) {
+  if (email) {
+    return `/verify-email?pending=1&email=${encodeURIComponent(email)}`;
+  }
+  return '/verify-email?pending=1';
+}
+
 function OnboardingPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -82,6 +89,11 @@ function OnboardingPageInner() {
   const [preview, setPreview] = useState<RecPreview | null>(null);
   const [calibrateFeedback, setCalibrateFeedback] = useState<string | null>(null);
 
+  const me = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api<{ email: string }>('/users/me'),
+  });
+
   const state = useQuery({
     queryKey: ['onboarding'],
     queryFn: () => api<OnboardingState>('/onboarding'),
@@ -90,9 +102,12 @@ function OnboardingPageInner() {
 
   useEffect(() => {
     if (state.error instanceof ApiError && state.error.code === 'EMAIL_NOT_VERIFIED') {
-      router.replace('/verify-email?pending=1');
+      if (me.isPending) {
+        return;
+      }
+      router.replace(verifyEmailPath(me.data?.email));
     }
-  }, [state.error, router]);
+  }, [state.error, router, me.isPending, me.data?.email]);
 
   useEffect(() => {
     if (!state.data || hydrated) {
@@ -231,7 +246,7 @@ function OnboardingPageInner() {
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
-        router.replace('/verify-email?pending=1');
+        router.replace(verifyEmailPath(me.data?.email));
         return;
       }
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -275,7 +290,7 @@ function OnboardingPageInner() {
           </p>
           <div className="flex flex-wrap gap-3">
             {state.error instanceof ApiError && state.error.code === 'FORBIDDEN' ? (
-              <Button type="button" onClick={() => router.push('/verify-email?pending=1')}>
+              <Button type="button" onClick={() => router.push(verifyEmailPath(me.data?.email))}>
                 Verify email
               </Button>
             ) : null}
