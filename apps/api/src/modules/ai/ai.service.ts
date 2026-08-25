@@ -14,17 +14,14 @@ export class AiService implements OnModuleInit {
 
   onModuleInit(): void {
     if (this.isProductionWithoutAiKey()) {
-      this.logger.error(
-        'OPENAI_API_KEY is missing in production and AI_MOCK is not enabled — AI calls will fail',
+      this.logger.warn(
+        'OPENAI_API_KEY is missing in production — falling back to deterministic ranking and explanations',
       );
     }
   }
 
   isMock(): boolean {
-    if (this.isProductionWithoutAiKey()) {
-      throw new Error('OPENAI_API_KEY is required in production unless AI_MOCK=true');
-    }
-    return this.config.get('AI_MOCK') === 'true' || !this.config.get('OPENAI_API_KEY');
+    return this.mockMode();
   }
 
   mockMode(): boolean {

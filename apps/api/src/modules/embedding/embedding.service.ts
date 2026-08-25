@@ -15,16 +15,13 @@ export class EmbeddingService implements OnModuleInit {
 
   onModuleInit(): void {
     if (this.isProductionWithoutAiKey()) {
-      this.logger.error(
-        'OPENAI_API_KEY is missing in production and AI_MOCK is not enabled — embeddings will fail',
+      this.logger.warn(
+        'OPENAI_API_KEY is missing in production — embeddings will use deterministic fallback vectors',
       );
     }
   }
 
   isMock(): boolean {
-    if (this.isProductionWithoutAiKey()) {
-      throw new Error('OPENAI_API_KEY is required in production unless AI_MOCK=true');
-    }
     return this.config.get('AI_MOCK') === 'true' || !this.config.get('OPENAI_API_KEY');
   }
 
