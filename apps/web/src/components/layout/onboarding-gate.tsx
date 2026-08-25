@@ -20,6 +20,11 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
+    if (me.isError || (!me.isLoading && !me.data)) {
+      const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+      router.replace(`/login?next=${next}`);
+      return;
+    }
     if (!me.data) {
       return;
     }
@@ -30,17 +35,21 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
     if (me.data.onboardingStatus !== 'COMPLETED' && !pathname.startsWith('/onboarding')) {
       router.replace('/onboarding');
     }
-  }, [me.data, pathname, router]);
+  }, [me.data, me.isError, me.isLoading, pathname, router]);
 
   if (me.isLoading) {
     return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   }
 
-  if (me.data && needsEmailVerification(me.data)) {
+  if (me.isError || !me.data) {
+    return <p className="text-sm text-[var(--muted)]">Redirecting to login…</p>;
+  }
+
+  if (needsEmailVerification(me.data)) {
     return <p className="text-sm text-[var(--muted)]">Redirecting to email verification…</p>;
   }
 
-  if (me.data && me.data.onboardingStatus !== 'COMPLETED') {
+  if (me.data.onboardingStatus !== 'COMPLETED') {
     return <p className="text-sm text-[var(--muted)]">Redirecting to onboarding…</p>;
   }
 
