@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { JOB_QUEUE } from '../../common/jobs/jobs.module';
+import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { InteractionsService } from '../interactions/interactions.service';
 import { MediaService } from '../media/media.service';
@@ -20,6 +22,7 @@ export class OnboardingService {
     private readonly interactions: InteractionsService,
     private readonly taste: TasteService,
     private readonly recommendations: RecommendationService,
+    @Inject(JOB_QUEUE) private readonly jobs: JobQueue,
   ) {}
 
   async getState(userId: string) {
@@ -123,6 +126,8 @@ export class OnboardingService {
     });
     await this.persistOnboarding(userId, { step: 5, completedAt: new Date().toISOString() });
     await this.taste.snapshot(userId);
+    void this.jobs.enqueue('generate-recommendations', { userId, mode: 'HIDDEN_GEMS', count: 10 });
+    void this.jobs.enqueue('update-taste-profile', { userId });
     return this.recommendations.generate(userId, { mode: 'FOR_YOU', count: 10 });
   }
 

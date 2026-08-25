@@ -71,8 +71,8 @@ export class FeedbackService {
     if (dto.reason) {
       await this.taste.applyFeedbackReason(userId, dto.mediaItemId, dto.reason);
     }
-    await this.taste.snapshot(userId);
-    await this.jobs.enqueue('generate-embedding', { userId });
+    await this.jobs.enqueue('update-taste-profile', { userId });
+    await this.jobs.enqueue('generate-recommendations', { userId, mode: 'FOR_YOU', count: 10 });
     await this.jobs.enqueue('sync-media', { mediaItemId: dto.mediaItemId });
     return row;
   }
