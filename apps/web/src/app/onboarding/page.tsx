@@ -1,13 +1,13 @@
 'use client';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../components/media/media-card';
 import { RatingControl } from '../../components/media/rating-control';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
-import { api, ApiError, isEmailVerified } from '../../lib/utils';
+import { api, ApiError, isEmailVerified, safeNextPath } from '../../lib/utils';
 
 const steps = ['Types', 'Loves', 'Ratings', 'Preferences', 'Taste', 'Recommendations', 'Calibrate'] as const;
 const genres = ['sci-fi', 'thriller', 'drama', 'comedy', 'romance', 'horror', 'indie', 'synthwave'];
@@ -48,7 +48,25 @@ type RecPreview = {
 };
 
 export default function OnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-6xl px-6 py-12">
+          <Card>
+            <p className="text-sm text-[var(--muted)]">Loading onboarding…</p>
+          </Card>
+        </main>
+      }
+    >
+      <OnboardingPageInner />
+    </Suspense>
+  );
+}
+
+function OnboardingPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextAfterOnboarding = safeNextPath(searchParams.get('next'));
   const [step, setStep] = useState(0);
   const [types, setTypes] = useState<string[]>(['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW']);
   const [selected, setSelected] = useState<string[]>([]);
@@ -237,7 +255,7 @@ export default function OnboardingPage() {
         return;
       }
     }
-    router.push('/app/recommendations');
+    router.push(nextAfterOnboarding ?? '/app/recommendations');
   };
 
   return (

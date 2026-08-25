@@ -6,7 +6,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { api } from '../../lib/utils';
+import { api, safeNextPath } from '../../lib/utils';
 
 type Status = 'idle' | 'pending' | 'verifying' | 'success' | 'error';
 
@@ -15,6 +15,8 @@ function VerifyEmailForm() {
   const token = params.get('token');
   const pending = params.get('pending') === '1';
   const emailFromQuery = params.get('email') ?? '';
+  const nextPath = safeNextPath(params.get('next'));
+  const onboardingHref = nextPath ? `/onboarding?next=${encodeURIComponent(nextPath)}` : '/onboarding';
   const [status, setStatus] = useState<Status>(
     token ? 'verifying' : pending ? 'pending' : 'error',
   );
@@ -112,7 +114,7 @@ function VerifyEmailForm() {
       </h1>
       <p className="text-sm text-[var(--muted)]">{message}</p>
       {status === 'success' ? (
-        <Button href="/onboarding" className="w-full">
+        <Button href={onboardingHref} className="w-full">
           Continue to onboarding
         </Button>
       ) : null}
