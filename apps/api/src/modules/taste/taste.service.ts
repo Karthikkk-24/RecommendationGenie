@@ -303,6 +303,19 @@ export class TasteService {
       preferredTone: input.preferredTone,
       enabledMediaTypes: preference.enabledMediaTypes,
     });
+
+    const keepGenres = [...new Set([...input.favoriteGenres, ...input.dislikedGenres])];
+    const keepThemes = [...new Set(input.preferredThemes)];
+    await this.prisma.client.tastePreference.deleteMany({
+      where: {
+        userId,
+        OR: [
+          { featureType: 'GENRE', ...(keepGenres.length ? { featureKey: { notIn: keepGenres } } : {}) },
+          { featureType: 'THEME', ...(keepThemes.length ? { featureKey: { notIn: keepThemes } } : {}) },
+        ],
+      },
+    });
+
     await this.snapshot(userId);
     return preference;
   }
