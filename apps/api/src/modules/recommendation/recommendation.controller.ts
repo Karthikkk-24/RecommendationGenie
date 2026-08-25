@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import {
-  mediaTypeValues,
+  supportedMediaTypeValues,
   moodValues,
   recommendationModeValues,
-  type MediaType,
+  type SupportedMediaType,
   type Mood,
   type RecommendationMode,
 } from '@recommendation-genie/types';
@@ -19,8 +19,8 @@ class GenerateDto {
   mode?: RecommendationMode;
 
   @IsOptional()
-  @IsEnum(mediaTypeValues)
-  mediaType?: MediaType;
+  @IsEnum(supportedMediaTypeValues)
+  mediaType?: SupportedMediaType;
 
   @IsOptional()
   @IsString()
