@@ -16,6 +16,7 @@ import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { api } from '../../../lib/utils';
+import { explanationRefetchInterval } from '../../../lib/explanation-refresh';
 
 const modes = ['HIDDEN_GEMS', 'DEEP_CUTS', 'SURPRISE_ME', 'MOOD', 'SIMILAR_TO', 'SHORTLIST'] as const;
 const moods = ['CHILL', 'ADRENALINE', 'EMOTIONAL', 'DARK', 'FUNNY', 'MIND_BENDING', 'RELAXING', 'INTENSE'] as const;
@@ -85,6 +86,7 @@ export default function DiscoverPage() {
   const modeRecs = useQuery({
     queryKey: ['recs', activeMode],
     queryFn: () => api<RecResponse>(`/recommendations?mode=${activeMode}`),
+    refetchInterval: (query) => explanationRefetchInterval(query.state.data?.items),
   });
 
   const similarSearch = useQuery({
@@ -119,6 +121,7 @@ export default function DiscoverPage() {
       }),
     onSuccess: (data, mode) => {
       queryClient.setQueryData(['recs', mode], data);
+      void queryClient.invalidateQueries({ queryKey: ['recs', mode] });
     },
   });
 
