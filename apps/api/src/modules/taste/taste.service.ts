@@ -8,6 +8,7 @@ import {
   interactionLearningRate,
   interactionSignal,
   patchesFromFeedbackReason,
+  pacingFeatureKey,
   type PreferencePatch,
 } from './taste-algorithm';
 
@@ -89,6 +90,11 @@ export class TasteService {
         {
           featureType: 'MEDIA_TYPE' as const,
           featureKey: media.type,
+          signal,
+        },
+        {
+          featureType: 'PACING' as const,
+          featureKey: pacingFeatureKey(media.pacing),
           signal,
         },
       ],
@@ -227,6 +233,15 @@ export class TasteService {
         featureKey: mediaType,
         signal: 0.8,
       })),
+      ...(input.preferredPacing !== undefined
+        ? [
+            {
+              featureType: 'PACING' as const,
+              featureKey: pacingFeatureKey(input.preferredPacing),
+              signal: 0.9,
+            },
+          ]
+        : []),
     ];
 
     // Two bounded learning steps so onboarding can seed meaningfully without
