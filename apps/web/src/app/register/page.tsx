@@ -68,6 +68,9 @@ export default function RegisterPage() {
             {pending ? 'Creating…' : 'Create account'}
           </Button>
         </form>
+        <p className="mt-4 text-sm text-[var(--muted)]">
+          Already have an account? <a href="/login">Log in</a>
+        </p>
       </Card>
     </main>
   );
