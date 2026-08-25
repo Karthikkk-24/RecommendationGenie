@@ -40,10 +40,12 @@ export class LibraryService {
               ? 'DISLIKE'
               : undefined;
 
+    const curatedTypes = ['LOVE', 'LIKE', 'SAVE', 'CONSUMED', 'DISLIKE', 'NOT_INTERESTED'] as const;
+
     const rows = await this.prisma.client.userMediaInteraction.findMany({
       where: {
         userId,
-        ...(interactionType ? { type: interactionType } : {}),
+        type: interactionType ? interactionType : { in: [...curatedTypes] },
         mediaItem: typeFilter,
       },
       include: { mediaItem: { include: this.media.cardInclude() } },
