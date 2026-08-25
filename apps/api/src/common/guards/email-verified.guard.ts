@@ -35,7 +35,7 @@ export class EmailVerifiedGuard implements CanActivate {
     if (!record?.emailVerifiedAt) {
       throw new ForbiddenException({
         code: 'EMAIL_NOT_VERIFIED',
-        message: 'Verify your email to continue with onboarding and recommendations',
+        message: 'Verify your email to continue',
       });
     }
 

@@ -1,10 +1,11 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
+import { EmailVerifiedGuard } from '../../common/guards/email-verified.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ProfilesService, UpdateProfileDto } from './profiles.service';
 
 @Controller('profiles')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, EmailVerifiedGuard)
 export class ProfilesController {
   constructor(private readonly profiles: ProfilesService) {}
 
