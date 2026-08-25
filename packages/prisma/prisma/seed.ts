@@ -4,7 +4,7 @@ import { createPrismaClient } from '../src/index';
 
 type SeedMedia = {
   id: string;
-  type: 'MOVIE' | 'GAME' | 'MUSIC' | 'TV_SHOW';
+  type: 'MOVIE' | 'GAME' | 'MUSIC' | 'TV_SHOW' | 'BOOK' | 'ANIME' | 'PODCAST';
   title: string;
   description: string;
   year: number;
@@ -19,7 +19,10 @@ type SeedMedia = {
   emotionalIntensity: number;
   genres: string[];
   tags: string[];
-  people: { name: string; role: 'DIRECTOR' | 'ACTOR' | 'ARTIST' | 'DEVELOPER' | 'COMPOSER' }[];
+  people: {
+    name: string;
+    role: 'DIRECTOR' | 'ACTOR' | 'ARTIST' | 'DEVELOPER' | 'COMPOSER' | 'WRITER' | 'PUBLISHER';
+  }[];
 };
 
 const catalog: SeedMedia[] = [
@@ -703,6 +706,124 @@ const catalog: SeedMedia[] = [
   },
 ];
 
+const mockOnlyCatalog: SeedMedia[] = [
+  {
+    id: 'media_book_dune',
+    type: 'BOOK',
+    title: 'Dune',
+    description:
+      'Political intrigue and ecology collide on the desert planet Arrakis in this foundational science-fiction epic.',
+    year: 1965,
+    language: 'en',
+    runtimeMinutes: null,
+    posterUrl: 'https://picsum.photos/seed/dune-book/500/750',
+    popularity: 0.8,
+    qualityScore: 0.93,
+    pacing: -0.1,
+    complexity: 0.85,
+    darkness: 0.4,
+    emotionalIntensity: 0.55,
+    genres: ['sci-fi', 'adventure'],
+    tags: ['space', 'political', 'epic'],
+    people: [{ name: 'Frank Herbert', role: 'WRITER' }],
+  },
+  {
+    id: 'media_book_neuromancer',
+    type: 'BOOK',
+    title: 'Neuromancer',
+    description: 'A washed-up console cowboy is hired for one last job that defines cyberpunk fiction.',
+    year: 1984,
+    language: 'en',
+    runtimeMinutes: null,
+    posterUrl: 'https://picsum.photos/seed/neuromancer/500/750',
+    popularity: 0.62,
+    qualityScore: 0.9,
+    pacing: 0.35,
+    complexity: 0.8,
+    darkness: 0.55,
+    emotionalIntensity: 0.45,
+    genres: ['sci-fi', 'thriller'],
+    tags: ['cyberpunk', 'noir', 'hacker'],
+    people: [{ name: 'William Gibson', role: 'WRITER' }],
+  },
+  {
+    id: 'media_anime_cowboy_bebop',
+    type: 'ANIME',
+    title: 'Cowboy Bebop',
+    description: 'Bounty hunters drift through a jazz-scored solar system chasing jobs and unfinished pasts.',
+    year: 1998,
+    language: 'ja',
+    runtimeMinutes: 25,
+    posterUrl: 'https://picsum.photos/seed/bebop/500/750',
+    popularity: 0.78,
+    qualityScore: 0.95,
+    pacing: 0.2,
+    complexity: 0.55,
+    darkness: 0.35,
+    emotionalIntensity: 0.7,
+    genres: ['sci-fi', 'drama', 'adventure'],
+    tags: ['space', 'jazz', 'found-family'],
+    people: [{ name: 'Shinichirō Watanabe', role: 'DIRECTOR' }],
+  },
+  {
+    id: 'media_anime_monster',
+    type: 'ANIME',
+    title: 'Monster',
+    description: 'A brilliant surgeon hunts the consequences of saving a child who grows into a remorseless killer.',
+    year: 2004,
+    language: 'ja',
+    runtimeMinutes: 24,
+    posterUrl: 'https://picsum.photos/seed/monster-anime/500/750',
+    popularity: 0.58,
+    qualityScore: 0.94,
+    pacing: -0.15,
+    complexity: 0.88,
+    darkness: 0.85,
+    emotionalIntensity: 0.75,
+    genres: ['thriller', 'drama', 'mystery'],
+    tags: ['psychological', 'crime', 'moral'],
+    people: [{ name: 'Naoki Urasawa', role: 'WRITER' }],
+  },
+  {
+    id: 'media_podcast_radiolab',
+    type: 'PODCAST',
+    title: 'Radiolab',
+    description: 'Curiosity-driven stories that braid science, philosophy, and sound design into short epics.',
+    year: 2002,
+    language: 'en',
+    runtimeMinutes: 60,
+    posterUrl: 'https://picsum.photos/seed/radiolab/500/500',
+    popularity: 0.7,
+    qualityScore: 0.88,
+    pacing: 0.1,
+    complexity: 0.45,
+    darkness: 0.05,
+    emotionalIntensity: 0.4,
+    genres: ['documentary'],
+    tags: ['science', 'storytelling', 'curious'],
+    people: [{ name: 'Jad Abumrad', role: 'ARTIST' }],
+  },
+  {
+    id: 'media_podcast_darknet_diaries',
+    type: 'PODCAST',
+    title: 'Darknet Diaries',
+    description: 'True stories from the shadowy side of the internet — hacks, breaches, and digital intrigue.',
+    year: 2017,
+    language: 'en',
+    runtimeMinutes: 55,
+    posterUrl: 'https://picsum.photos/seed/darknet/500/500',
+    popularity: 0.65,
+    qualityScore: 0.86,
+    pacing: 0.25,
+    complexity: 0.4,
+    darkness: 0.5,
+    emotionalIntensity: 0.55,
+    genres: ['thriller', 'documentary'],
+    tags: ['cyber', 'true-crime', 'tech'],
+    people: [{ name: 'Jack Rhysider', role: 'ARTIST' }],
+  },
+];
+
 const similarPairs: Array<[string, string, number]> = [
   ['media_interstellar', 'media_arrival', 0.86],
   ['media_interstellar', 'media_martian', 0.7],
@@ -725,6 +846,12 @@ const similarPairs: Array<[string, string, number]> = [
   ['media_perturbator', 'media_carpenter_brut', 0.88],
   ['media_max_richter', 'media_nichibotsu', 0.7],
   ['media_radiohead_ok', 'media_disco', 0.45],
+  ['media_book_dune', 'media_interstellar', 0.55],
+  ['media_book_neuromancer', 'media_blade_runner_2049', 0.7],
+  ['media_book_neuromancer', 'media_cyberpunk', 0.72],
+  ['media_anime_cowboy_bebop', 'media_blade_runner_2049', 0.5],
+  ['media_anime_monster', 'media_dark', 0.55],
+  ['media_podcast_darknet_diaries', 'media_upgrade', 0.4],
 ];
 
 function slugify(value: string): string {
@@ -753,7 +880,7 @@ async function main(): Promise<void> {
     },
   });
 
-  for (const item of catalog) {
+  for (const item of [...catalog, ...mockOnlyCatalog]) {
     const genreIds: string[] = [];
     for (const genre of item.genres) {
       const row = await prisma.mediaGenre.upsert({

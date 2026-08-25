@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { mediaTypeSchema, moodSchema, recommendationModeSchema } from './enums';
+import { mediaTypeSchema, moodSchema, recommendationModeSchema, supportedMediaTypeSchema } from './enums';
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -46,7 +46,7 @@ export type MediaCard = z.infer<typeof mediaCardSchema>;
 
 export const generateRecommendationsInputSchema = z.object({
   mode: recommendationModeSchema.default('FOR_YOU'),
-  mediaType: mediaTypeSchema.optional(),
+  mediaType: supportedMediaTypeSchema.optional(),
   similarToId: z.string().optional(),
   mood: moodSchema.optional(),
   timeAvailableMinutes: z.number().int().positive().optional(),
