@@ -33,19 +33,36 @@ export function needsEmailVerification(user: {
   return Boolean(user.emailVerificationRequired) && !isEmailVerified(user);
 }
 
+export function safeNextPath(next: string | null | undefined): string | null {
+  if (!next || !next.startsWith('/') || next.startsWith('//')) {
+    return null;
+  }
+  return next;
+}
+
+function withNextQuery(path: string, next: string | null): string {
+  const safe = safeNextPath(next);
+  if (!safe) {
+    return path;
+  }
+  const join = path.includes('?') ? '&' : '?';
+  return `${path}${join}next=${encodeURIComponent(safe)}`;
+}
+
 export function postAuthPath(
   user: SessionUser,
   next: string | null,
   emailVerificationRequired = user.emailVerificationRequired ?? false,
 ): string {
+  const safeNext = safeNextPath(next);
   if (emailVerificationRequired && !isEmailVerified(user)) {
-    return `/verify-email?pending=1&email=${encodeURIComponent(user.email)}`;
+    return withNextQuery(`/verify-email?pending=1&email=${encodeURIComponent(user.email)}`, safeNext);
   }
   if (user.onboardingStatus !== 'COMPLETED') {
-    return '/onboarding';
+    return withNextQuery('/onboarding', safeNext);
   }
-  if (next && next.startsWith('/') && !next.startsWith('//')) {
-    return next;
+  if (safeNext) {
+    return safeNext;
   }
   return '/app';
 }
