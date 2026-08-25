@@ -152,6 +152,33 @@ export default function SettingsPage() {
   const settingsError =
     save.error ?? saveBio.error ?? saveMediaTypes.error ?? saveNotifications.error ?? changePassword.error;
 
+  if (me.isPending) {
+    return (
+      <div className="max-w-lg space-y-6">
+        <h1 className="font-serif text-4xl">Settings</h1>
+        <Card>
+          <p className="text-sm text-[var(--muted)]">Loading your settings…</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (me.isError) {
+    return (
+      <div className="max-w-lg space-y-6">
+        <h1 className="font-serif text-4xl">Settings</h1>
+        <Card className="space-y-4">
+          <p className="text-sm text-red-400">
+            {me.error instanceof Error ? me.error.message : 'Could not load your settings.'}
+          </p>
+          <Button type="button" variant="ghost" onClick={() => void me.refetch()}>
+            Try again
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-lg space-y-6">
       <h1 className="font-serif text-4xl">Settings</h1>
