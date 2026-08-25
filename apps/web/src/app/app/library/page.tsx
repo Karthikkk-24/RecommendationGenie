@@ -41,7 +41,26 @@ export default function LibraryPage() {
         method: 'POST',
         body: JSON.stringify({ mediaItemId, type: 'RATED', rating }),
       }),
-    onSuccess: () => {
+    onMutate: async ({ mediaItemId, rating }) => {
+      await queryClient.cancelQueries({ queryKey: ['interactions-ratings'] });
+      const previous = queryClient.getQueryData<Array<{ mediaItemId: string; rating: number }>>([
+        'interactions-ratings',
+      ]);
+      queryClient.setQueryData<Array<{ mediaItemId: string; rating: number }>>(
+        ['interactions-ratings'],
+        (current = []) => [
+          ...current.filter((row) => row.mediaItemId !== mediaItemId),
+          { mediaItemId, rating },
+        ],
+      );
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['interactions-ratings'], context.previous);
+      }
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['interactions-ratings'] });
       void queryClient.invalidateQueries({ queryKey: ['library'] });
     },
@@ -102,6 +121,9 @@ export default function LibraryPage() {
               value={ratings.data?.find((row) => row.mediaItemId === item.id)?.rating ?? 0}
               onChange={(value) => rate.mutate({ mediaItemId: item.id, rating: value })}
             />
+            {rate.isError && rate.variables?.mediaItemId === item.id ? (
+              <p className="text-xs text-red-400">Could not save rating</p>
+            ) : null}
             {filter === 'SAVED' ? (
               <Button
                 type="button"
