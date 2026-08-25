@@ -95,6 +95,29 @@ export class JobHandlersService implements OnModuleInit, OnModuleDestroy {
       await this.notifications.sendProductUpdateEmails(payload.message);
     });
 
+    this.queue.register<{ limit?: number }>('backfill-media-embeddings', async (payload) => {
+      const limit = payload.limit ?? 100;
+      const items = await this.prisma.client.mediaItem.findMany({
+        select: { id: true },
+        take: limit,
+        orderBy: { popularity: 'desc' },
+      });
+      let embedded = 0;
+      for (const item of items) {
+        const vector = await this.embeddings.embedMedia(item.id);
+        if (vector) {
+          embedded += 1;
+        }
+      }
+      this.logger.log(`Backfilled embeddings for ${embedded}/${items.length} media items`);
+    });
+
+    void this.queue.enqueue('backfill-media-embeddings', { limit: 200 }).catch((error: unknown) => {
+      this.logger.error(
+        `Failed to enqueue embedding backfill: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    });
+
     this.digestTimer = setInterval(() => {
       void this.queue.enqueue('send-digest-emails', {}).catch((error: unknown) => {
         this.logger.error(
