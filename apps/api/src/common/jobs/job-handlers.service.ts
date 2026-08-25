@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { GenerateRecommendationsInput } from '@recommendation-genie/types';
 import { CacheService } from '../../common/cache/cache.service';
 import { JOB_QUEUE } from './jobs.module';
@@ -7,11 +7,17 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AiService } from '../../modules/ai/ai.service';
 import { EmbeddingService } from '../../modules/embedding/embedding.service';
 import { MediaService } from '../../modules/media/media.service';
+import { NotificationsService } from '../../modules/notifications/notifications.service';
 import { RecommendationService } from '../../modules/recommendation/recommendation.service';
 import { TasteService } from '../../modules/taste/taste.service';
 
+const WEEK_MS = 1000 * 60 * 60 * 24 * 7;
+
 @Injectable()
-export class JobHandlersService implements OnModuleInit {
+export class JobHandlersService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(JobHandlersService.name);
+  private digestTimer: ReturnType<typeof setInterval> | null = null;
+
   constructor(
     @Inject(JOB_QUEUE) private readonly queue: JobQueue,
     private readonly embeddings: EmbeddingService,
@@ -21,6 +27,7 @@ export class JobHandlersService implements OnModuleInit {
     private readonly taste: TasteService,
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   onModuleInit(): void {
@@ -72,5 +79,35 @@ export class JobHandlersService implements OnModuleInit {
       await this.media.syncFromProvider(payload.mediaItemId);
       await this.embeddings.embedMedia(payload.mediaItemId);
     });
+
+    this.queue.register<{ userId: string; generationId: string }>(
+      'send-recommendation-email',
+      async (payload) => {
+        await this.notifications.sendRecommendationEmail(payload.userId, payload.generationId);
+      },
+    );
+
+    this.queue.register<Record<string, never>>('send-digest-emails', async () => {
+      await this.notifications.sendDigestEmails();
+    });
+
+    this.queue.register<{ message: string }>('send-product-update-emails', async (payload) => {
+      await this.notifications.sendProductUpdateEmails(payload.message);
+    });
+
+    this.digestTimer = setInterval(() => {
+      void this.queue.enqueue('send-digest-emails', {}).catch((error: unknown) => {
+        this.logger.error(
+          `Failed to enqueue digest emails: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
+      });
+    }, WEEK_MS);
+  }
+
+  onModuleDestroy(): void {
+    if (this.digestTimer) {
+      clearInterval(this.digestTimer);
+      this.digestTimer = null;
+    }
   }
 }

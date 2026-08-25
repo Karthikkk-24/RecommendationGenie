@@ -223,6 +223,10 @@ export class RecommendationService {
       generationId: generation.id,
       payload: { mode: input.mode, candidateCount: candidateIds.length },
     });
+    void this.jobs.enqueue('send-recommendation-email', {
+      userId,
+      generationId: generation.id,
+    });
     return this.serializeGeneration(generation);
   }
 

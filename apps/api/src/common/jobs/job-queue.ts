@@ -5,7 +5,10 @@ export type JobName =
   | 'generate-embedding'
   | 'sync-media'
   | 'generate-ai-explanation'
-  | 'update-taste-profile';
+  | 'update-taste-profile'
+  | 'send-recommendation-email'
+  | 'send-digest-emails'
+  | 'send-product-update-emails';
 
 export type JobHandler<T = unknown> = (payload: T) => Promise<void>;
 

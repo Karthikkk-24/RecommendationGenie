@@ -11,6 +11,6 @@ import { MailService } from './mail.service';
   imports: [JwtModule.register({})],
   controllers: [AuthController],
   providers: [AuthService, MailService, JwtAuthGuard, RolesGuard, EmailVerifiedGuard],
-  exports: [AuthService, JwtAuthGuard, RolesGuard, EmailVerifiedGuard],
+  exports: [AuthService, MailService, JwtAuthGuard, RolesGuard, EmailVerifiedGuard],
 })
 export class AuthModule {}
