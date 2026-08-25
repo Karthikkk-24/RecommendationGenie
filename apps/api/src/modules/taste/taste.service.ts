@@ -151,6 +151,23 @@ export class TasteService {
         })),
       },
     });
+    await this.pruneSnapshots(userId);
+  }
+
+  /** Keep only the newest N snapshots so history stays bounded. */
+  private async pruneSnapshots(userId: string, keep = 30): Promise<void> {
+    const outdated = await this.prisma.client.tasteProfileSnapshot.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      skip: keep,
+      select: { id: true },
+    });
+    if (outdated.length === 0) {
+      return;
+    }
+    await this.prisma.client.tasteProfileSnapshot.deleteMany({
+      where: { id: { in: outdated.map((row) => row.id) } },
+    });
   }
 
   async evolution(userId: string) {
