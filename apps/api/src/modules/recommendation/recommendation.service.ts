@@ -215,13 +215,13 @@ export class RecommendationService {
       });
     }
 
-    await this.taste.snapshot(userId);
     await this.analytics.track({
       userId,
       eventName: 'recommendation.generated',
       generationId: generation.id,
       payload: { mode: input.mode, candidateCount: candidateIds.length },
     });
+    void this.jobs.enqueue('update-taste-profile', { userId });
     void this.jobs.enqueue('send-recommendation-email', {
       userId,
       generationId: generation.id,
