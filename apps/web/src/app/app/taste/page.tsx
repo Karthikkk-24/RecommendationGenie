@@ -111,7 +111,6 @@ export default function TastePage() {
   });
 
   const profile = taste.data?.profile;
-  const genreFeatures = (taste.data?.features ?? []).filter((f) => f.featureType === 'GENRE').slice(0, 8);
   const topFeatures = (taste.data?.features ?? [])
     .filter((f) => f.featureType !== 'MEDIA_TYPE')
     .sort((a, b) => b.weight - a.weight)
