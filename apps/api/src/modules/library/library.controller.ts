@@ -32,6 +32,12 @@ class AddLibraryDto {
   mediaItemId!: string;
 }
 
+class RemoveLibraryQueryDto {
+  @IsOptional()
+  @IsEnum(libraryFilterValues)
+  filter?: LibraryFilter;
+}
+
 @Controller('library')
 @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
 export class LibraryController {
@@ -48,7 +54,11 @@ export class LibraryController {
   }
 
   @Delete(':mediaItemId')
-  remove(@CurrentUser() user: AuthUser, @Param('mediaItemId') mediaItemId: string) {
-    return this.library.remove(user.id, mediaItemId);
+  remove(
+    @CurrentUser() user: AuthUser,
+    @Param('mediaItemId') mediaItemId: string,
+    @Query() query: RemoveLibraryQueryDto,
+  ) {
+    return this.library.remove(user.id, mediaItemId, query.filter ?? 'SAVED');
   }
 }

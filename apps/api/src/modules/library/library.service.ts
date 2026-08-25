@@ -141,11 +141,38 @@ export class LibraryService {
     return this.interactions.create(userId, { mediaItemId, type: 'SAVE' });
   }
 
-  async remove(userId: string, mediaItemId: string) {
-    await this.prisma.client.savedItem.deleteMany({ where: { userId, mediaItemId } });
+  async remove(userId: string, mediaItemId: string, filter: LibraryFilter = 'SAVED') {
+    if (filter === 'SAVED' || filter === 'ALL') {
+      await this.prisma.client.savedItem.deleteMany({ where: { userId, mediaItemId } });
+      await this.prisma.client.userMediaInteraction.deleteMany({
+        where: { userId, mediaItemId, type: 'SAVE' },
+      });
+      return { ok: true };
+    }
+
+    const interactionType =
+      filter === 'LOVED'
+        ? 'LOVE'
+        : filter === 'LIKED'
+          ? 'LIKE'
+          : filter === 'CONSUMED'
+            ? 'CONSUMED'
+            : filter === 'REJECTED'
+              ? 'DISLIKE'
+              : null;
+
+    if (!interactionType) {
+      return { ok: true };
+    }
+
     await this.prisma.client.userMediaInteraction.deleteMany({
-      where: { userId, mediaItemId, type: 'SAVE' },
+      where: { userId, mediaItemId, type: interactionType },
     });
+
+    if (interactionType === 'CONSUMED') {
+      await this.prisma.client.consumptionHistory.deleteMany({ where: { userId, mediaItemId } });
+    }
+
     return { ok: true };
   }
 }
