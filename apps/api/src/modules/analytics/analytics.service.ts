@@ -26,31 +26,42 @@ export class AnalyticsService {
   async overview(userId: string) {
     const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30);
 
-    const [likeEvents, loveEvents, dislikeEvents, saveEvents, skipEvents, viewEvents, itemImpressions] =
-      await Promise.all([
-        this.prisma.client.analyticsEvent.count({
-          where: { userId, eventName: 'interaction.like', createdAt: { gte: since } },
-        }),
-        this.prisma.client.analyticsEvent.count({
-          where: { userId, eventName: 'interaction.love', createdAt: { gte: since } },
-        }),
-        this.prisma.client.analyticsEvent.count({
-          where: { userId, eventName: 'interaction.dislike', createdAt: { gte: since } },
-        }),
-        this.prisma.client.analyticsEvent.count({
-          where: { userId, eventName: 'interaction.save', createdAt: { gte: since } },
-        }),
-        this.prisma.client.analyticsEvent.count({
-          where: { userId, eventName: 'interaction.skip', createdAt: { gte: since } },
-        }),
-        this.prisma.client.analyticsEvent.count({
-          where: { userId, eventName: 'interaction.view', createdAt: { gte: since } },
-        }),
-        // Per-item impressions from stored recommendation rows (not generation events).
-        this.prisma.client.recommendationItem.count({
-          where: { generation: { userId, createdAt: { gte: since } } },
-        }),
-      ]);
+    const [
+      likeEvents,
+      loveEvents,
+      dislikeEvents,
+      saveEvents,
+      skipEvents,
+      viewEvents,
+      generatedEvents,
+      itemImpressions,
+    ] = await Promise.all([
+      this.prisma.client.analyticsEvent.count({
+        where: { userId, eventName: 'interaction.like', createdAt: { gte: since } },
+      }),
+      this.prisma.client.analyticsEvent.count({
+        where: { userId, eventName: 'interaction.love', createdAt: { gte: since } },
+      }),
+      this.prisma.client.analyticsEvent.count({
+        where: { userId, eventName: 'interaction.dislike', createdAt: { gte: since } },
+      }),
+      this.prisma.client.analyticsEvent.count({
+        where: { userId, eventName: 'interaction.save', createdAt: { gte: since } },
+      }),
+      this.prisma.client.analyticsEvent.count({
+        where: { userId, eventName: 'interaction.skip', createdAt: { gte: since } },
+      }),
+      this.prisma.client.analyticsEvent.count({
+        where: { userId, eventName: 'interaction.view', createdAt: { gte: since } },
+      }),
+      this.prisma.client.analyticsEvent.count({
+        where: { userId, eventName: 'recommendation.generated', createdAt: { gte: since } },
+      }),
+      // Per-item impressions from stored recommendation rows (not generation events).
+      this.prisma.client.recommendationItem.count({
+        where: { generation: { userId, createdAt: { gte: since } } },
+      }),
+    ]);
 
     const likes = likeEvents + loveEvents;
     const dislikes = dislikeEvents;
@@ -65,7 +76,14 @@ export class AnalyticsService {
       saveRate: this.rate(saves, impressions || 1),
       skipRate: this.rate(skips, impressions || 1),
       acceptanceRate: this.rate(likes + saves, impressions || 1),
-      totals: { likes, dislikes, saves, skips, impressions },
+      totals: {
+        likes,
+        dislikes,
+        saves,
+        skips,
+        impressions,
+        generations: generatedEvents,
+      },
     };
   }
 
