@@ -1,11 +1,12 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
+import { EmailVerifiedGuard } from '../../common/guards/email-verified.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateInteractionDto } from './dto/create-interaction.dto';
 import { InteractionsService } from './interactions.service';
 
 @Controller('interactions')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, EmailVerifiedGuard)
 export class InteractionsController {
   constructor(private readonly interactions: InteractionsService) {}
 

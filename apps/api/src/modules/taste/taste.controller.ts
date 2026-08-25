@@ -1,11 +1,12 @@
 import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
+import { EmailVerifiedGuard } from '../../common/guards/email-verified.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OnboardingPreferencesDto } from '../onboarding/dto/onboarding.dto';
 import { TasteService } from './taste.service';
 
 @Controller('taste-profile')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, EmailVerifiedGuard)
 export class TasteController {
   constructor(private readonly taste: TasteService) {}
 

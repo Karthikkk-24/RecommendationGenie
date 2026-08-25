@@ -2,6 +2,7 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { mediaTypeValues, type MediaType } from '@recommendation-genie/types';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
+import { EmailVerifiedGuard } from '../../common/guards/email-verified.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { MediaService } from '../media/media.service';
@@ -34,7 +35,7 @@ export class SearchController {
   ) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   async search(@Query() query: SearchDto, @CurrentUser() user: AuthUser) {
     await this.prisma.client.searchHistory.create({
       data: { userId: user.id, query: query.q, mediaType: query.type },
@@ -43,7 +44,7 @@ export class SearchController {
   }
 
   @Get('history')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   async history(@CurrentUser() user: AuthUser) {
     const rows = await this.prisma.client.searchHistory.findMany({
       where: { userId: user.id },

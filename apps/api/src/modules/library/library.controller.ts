@@ -9,6 +9,7 @@ import {
   type MediaType,
 } from '@recommendation-genie/types';
 import { CurrentUser, type AuthUser } from '../../common/decorators/current-user.decorator';
+import { EmailVerifiedGuard } from '../../common/guards/email-verified.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { LibraryService } from './library.service';
 
@@ -32,7 +33,7 @@ class AddLibraryDto {
 }
 
 @Controller('library')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, EmailVerifiedGuard)
 export class LibraryController {
   constructor(private readonly library: LibraryService) {}
 
