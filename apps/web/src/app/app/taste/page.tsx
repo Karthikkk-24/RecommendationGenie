@@ -38,6 +38,7 @@ export default function TastePage() {
   const [preferredThemes, setPreferredThemes] = useState<string[]>([]);
   const [complexity, setComplexity] = useState(0);
   const [pacing, setPacing] = useState(0);
+  const [preferredTone, setPreferredTone] = useState<'light' | 'neutral' | 'dark'>('neutral');
   const [hydrated, setHydrated] = useState(false);
 
   const me = useQuery({
@@ -50,6 +51,7 @@ export default function TastePage() {
           preferredThemes?: string[];
           preferredComplexity?: number | null;
           preferredPacing?: number | null;
+          preferredTone?: string | null;
         } | null;
       }>('/users/me'),
   });
@@ -64,6 +66,9 @@ export default function TastePage() {
     setPreferredThemes(pref.preferredThemes ?? []);
     setComplexity(pref.preferredComplexity ?? 0);
     setPacing(pref.preferredPacing ?? 0);
+    setPreferredTone(
+      pref.preferredTone === 'light' || pref.preferredTone === 'dark' ? pref.preferredTone : 'neutral',
+    );
     setHydrated(true);
   }, [me.data, hydrated]);
 
@@ -77,6 +82,7 @@ export default function TastePage() {
           preferredThemes,
           preferredComplexity: complexity,
           preferredPacing: pacing,
+          preferredTone,
         }),
       }),
     onSuccess: () => {
@@ -241,6 +247,21 @@ export default function TastePage() {
             className="mt-2 w-full"
           />
         </label>
+        <div>
+          <p className="mb-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Preferred tone</p>
+          <div className="flex flex-wrap gap-2">
+            {(['light', 'neutral', 'dark'] as const).map((tone) => (
+              <button
+                key={tone}
+                type="button"
+                onClick={() => setPreferredTone(tone)}
+                className={`rounded-full border px-3 py-1 text-sm capitalize ${preferredTone === tone ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
+              >
+                {tone}
+              </button>
+            ))}
+          </div>
+        </div>
         <Button
           type="button"
           onClick={() => savePreferences.mutate()}
