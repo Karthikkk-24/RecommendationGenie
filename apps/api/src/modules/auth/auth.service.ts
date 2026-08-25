@@ -122,7 +122,11 @@ export class AuthService {
     });
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const user = await this.prisma.client.user.findUnique({ where: { id: userId } });
     if (!user || !(await argon2.verify(user.passwordHash, currentPassword))) {
       throw new UnauthorizedException({ code: 'INVALID_PASSWORD', message: 'Current password is incorrect' });
@@ -138,6 +142,8 @@ export class AuthService {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    const session = await this.issueSession(user.id, user.email, user.role);
+    return { accessToken: session.accessToken, refreshToken: session.refreshToken };
   }
 
   async verifyEmail(token: string): Promise<void> {

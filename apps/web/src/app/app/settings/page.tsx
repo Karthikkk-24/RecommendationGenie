@@ -314,7 +314,7 @@ export default function SettingsPage() {
           {changePassword.isPending ? 'Updating…' : 'Update password'}
         </Button>
         {changePassword.isSuccess ? (
-          <p className="text-sm text-[var(--gold)]">Password updated.</p>
+          <p className="text-sm text-[var(--gold)]">Password updated. You are still signed in.</p>
         ) : null}
       </Card>
 
