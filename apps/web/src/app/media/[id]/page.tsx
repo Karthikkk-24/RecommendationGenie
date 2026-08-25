@@ -180,12 +180,21 @@ export default function MediaDetailsPage() {
                 <RatingControl
                   value={rating}
                   onChange={(value) => {
+                    const previous = rating;
                     setRating(value);
-                    rate.mutate(value);
+                    setSavedMessage(null);
+                    rate.mutate(value, {
+                      onError: () => {
+                        setRating(previous);
+                      },
+                    });
                   }}
                 />
                 {rate.isPending ? <p className="mt-1 text-xs text-[var(--muted)]">Saving…</p> : null}
-                {savedMessage && !rate.isPending ? (
+                {rate.isError && !rate.isPending ? (
+                  <p className="mt-1 text-xs text-red-400">Could not save rating. Try again.</p>
+                ) : null}
+                {savedMessage && !rate.isPending && !rate.isError ? (
                   <p className="mt-1 text-xs text-[var(--gold)]">{savedMessage}</p>
                 ) : null}
               </div>
