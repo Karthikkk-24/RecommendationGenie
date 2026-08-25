@@ -512,7 +512,19 @@ export default function OnboardingPage() {
 
       <div className="mt-10 flex gap-3">
         {step > 0 && step < 6 ? (
-          <Button type="button" variant="ghost" onClick={() => setStep((value) => value - 1)}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() =>
+              setStep((value) => {
+                // Skipping Loves jumps to Preferences (3); Back should return to Loves, not empty Ratings.
+                if (value === 3 && selected.length === 0) {
+                  return 1;
+                }
+                return value - 1;
+              })
+            }
+          >
             Back
           </Button>
         ) : null}
