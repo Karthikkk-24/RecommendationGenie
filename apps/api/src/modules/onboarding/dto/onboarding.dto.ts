@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -10,7 +11,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { mediaTypeValues, supportedMediaTypeValues, type MediaType } from '@recommendation-genie/types';
+import { supportedMediaTypeValues, type MediaType } from '@recommendation-genie/types';
 
 export class OnboardingTypesDto {
   @IsArray()
@@ -63,8 +64,8 @@ export class OnboardingPreferencesDto {
   preferredComplexity?: number;
 
   @IsOptional()
-  @IsString()
-  preferredTone?: string;
+  @IsIn(['light', 'neutral', 'dark'])
+  preferredTone?: string | null;
 
   @IsArray()
   @IsString({ each: true })

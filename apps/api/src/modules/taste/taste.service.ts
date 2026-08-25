@@ -194,7 +194,13 @@ export class TasteService {
     // Onboarding sliders are explicit targets — set TasteProfile scalars directly
     // so the first recommendation batch reflects them (not a weak learning step).
     const darkness =
-      input.preferredTone === 'dark' ? 0.6 : input.preferredTone === 'light' ? -0.4 : undefined;
+      input.preferredTone === undefined
+        ? undefined
+        : input.preferredTone === 'dark'
+          ? 0.6
+          : input.preferredTone === 'light'
+            ? -0.4
+            : 0;
     await this.prisma.client.tasteProfile.upsert({
       where: { userId },
       update: {
@@ -295,7 +301,10 @@ export class TasteService {
         preferredThemes: input.preferredThemes,
         preferredPacing: input.preferredPacing,
         preferredComplexity: input.preferredComplexity,
-        preferredTone: input.preferredTone,
+        preferredTone:
+          input.preferredTone === undefined || input.preferredTone === 'neutral'
+            ? null
+            : input.preferredTone,
       },
       create: {
         userId,
@@ -304,7 +313,10 @@ export class TasteService {
         preferredThemes: input.preferredThemes,
         preferredPacing: input.preferredPacing,
         preferredComplexity: input.preferredComplexity,
-        preferredTone: input.preferredTone,
+        preferredTone:
+          input.preferredTone === undefined || input.preferredTone === 'neutral'
+            ? null
+            : input.preferredTone,
         enabledMediaTypes: ['MOVIE', 'GAME', 'MUSIC'],
       },
     });
@@ -315,7 +327,7 @@ export class TasteService {
       preferredThemes: input.preferredThemes,
       preferredPacing: input.preferredPacing,
       preferredComplexity: input.preferredComplexity,
-      preferredTone: input.preferredTone,
+      preferredTone: input.preferredTone ?? 'neutral',
       enabledMediaTypes: preference.enabledMediaTypes,
     });
 
