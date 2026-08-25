@@ -12,6 +12,7 @@ import { TasteService } from '../taste/taste.service';
 import { CandidateGenerationService } from './candidate-generation.service';
 import { RecommendationConfigService } from './recommendation-config.service';
 import { combineScores, mmrSelect, moodAlignment, normalize01, weightsForMode, buildFeedbackAffinity, scoreFromFeedbackHistory } from './scoring';
+import { localeLanguagesFor, localeMatchBoost } from './locale-preference';
 
 @Injectable()
 export class RecommendationService {
@@ -28,14 +29,21 @@ export class RecommendationService {
   ) {}
 
   async generate(userId: string, input: GenerateRecommendationsInput) {
+    const user = await this.prisma.client.user.findUnique({
+      where: { id: userId },
+      select: { preferredLanguage: true, country: true },
+    });
+    const languageFilter = input.language ?? user?.preferredLanguage ?? undefined;
+    const localeLanguages = localeLanguagesFor(user?.preferredLanguage, user?.country);
+
     const blocked = await this.blockedIds(userId, input.mode);
     const candidateIds = (await this.candidates.generate(userId, input)).filter((id) => !blocked.has(id));
     const items = await this.prisma.client.mediaItem.findMany({
       where: {
         id: { in: candidateIds },
-        ...(input.language
+        ...(languageFilter
           ? {
-              OR: [{ language: input.language }, { language: null }],
+              OR: [{ language: languageFilter }, { language: null }],
             }
           : {}),
         ...(input.timeAvailableMinutes
@@ -92,6 +100,7 @@ export class RecommendationService {
         this.featureScore(themeKeys, themeWeights),
         this.featureScore([item.type], mediaTypeWeights),
         this.featureScore(pacingKeys, pacingWeights),
+        localeMatchBoost(item.language, localeLanguages),
       ];
       if (input.mood) {
         tasteParts.push(
