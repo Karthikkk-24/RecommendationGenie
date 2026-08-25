@@ -153,14 +153,35 @@ export default function TastePage() {
           <div className="flex flex-wrap gap-2">
             {genres.map((genre) => (
               <button
-                key={genre}
+                key={`fav-${genre}`}
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setFavoriteGenres((current) =>
                     current.includes(genre) ? current.filter((g) => g !== genre) : [...current, genre],
-                  )
-                }
+                  );
+                  setDislikedGenres((current) => current.filter((g) => g !== genre));
+                }}
                 className={`rounded-full border px-3 py-1 text-sm ${favoriteGenres.includes(genre) ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
+              >
+                {genre}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Disliked genres</p>
+          <div className="flex flex-wrap gap-2">
+            {genres.map((genre) => (
+              <button
+                key={`dis-${genre}`}
+                type="button"
+                onClick={() => {
+                  setDislikedGenres((current) =>
+                    current.includes(genre) ? current.filter((g) => g !== genre) : [...current, genre],
+                  );
+                  setFavoriteGenres((current) => current.filter((g) => g !== genre));
+                }}
+                className={`rounded-full border px-3 py-1 text-sm ${dislikedGenres.includes(genre) ? 'border-red-400 text-red-400' : 'border-[var(--line)]'}`}
               >
                 {genre}
               </button>
