@@ -120,3 +120,65 @@ export function normalize01(value: number, min = -1, max = 1): number {
   }
   return Math.min(1, Math.max(0, (value - min) / (max - min)));
 }
+
+/** Maps UserFeedback actions to signed signals for the historical feedback score. */
+export const FEEDBACK_ACTION_SIGNAL: Record<string, number> = {
+  LOVE: 1,
+  LIKE: 0.65,
+  SAVE: 0.4,
+  MAYBE: 0,
+  ALREADY_CONSUMED: 0.15,
+  NOT_FOR_ME: -0.85,
+  NEVER_THIS_TYPE: -1,
+};
+
+export type FeedbackHistoryRow = {
+  mediaItemId: string;
+  action: string;
+  features: string[];
+};
+
+export type FeedbackAffinity = {
+  mediaSignals: Map<string, number>;
+  featureWeights: Map<string, number>;
+};
+
+export function buildFeedbackAffinity(rows: FeedbackHistoryRow[]): FeedbackAffinity {
+  const mediaSignals = new Map<string, number>();
+  const featureWeights = new Map<string, number>();
+
+  for (const row of rows) {
+    const signal = FEEDBACK_ACTION_SIGNAL[row.action] ?? 0;
+    if (signal === 0) {
+      continue;
+    }
+    const prior = mediaSignals.get(row.mediaItemId) ?? 0;
+    mediaSignals.set(row.mediaItemId, Math.max(-1, Math.min(1, prior + signal)));
+    for (const key of row.features) {
+      featureWeights.set(key, (featureWeights.get(key) ?? 0) + signal);
+    }
+  }
+
+  for (const [key, value] of featureWeights) {
+    featureWeights.set(key, Math.max(-1, Math.min(1, value / 3)));
+  }
+
+  return { mediaSignals, featureWeights };
+}
+
+/** Score a candidate from prior UserFeedback (direct item signal, else feature overlap). */
+export function scoreFromFeedbackHistory(
+  mediaId: string,
+  featureKeys: string[],
+  affinity: FeedbackAffinity,
+): number {
+  const direct = affinity.mediaSignals.get(mediaId);
+  if (direct !== undefined) {
+    return direct;
+  }
+  if (featureKeys.length === 0 || affinity.featureWeights.size === 0) {
+    return 0;
+  }
+  const sum = featureKeys.reduce((total, key) => total + (affinity.featureWeights.get(key) ?? 0), 0);
+  return sum / featureKeys.length;
+}
