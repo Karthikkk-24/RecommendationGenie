@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { InteractionsModule } from '../interactions/interactions.module';
 import { MediaModule } from '../media/media.module';
 import { LibraryController } from './library.controller';
 import { LibraryService } from './library.service';
 
 @Module({
-  imports: [AuthModule, MediaModule],
+  imports: [AuthModule, MediaModule, InteractionsModule],
   controllers: [LibraryController],
   providers: [LibraryService],
 })
