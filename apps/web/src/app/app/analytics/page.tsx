@@ -14,7 +14,14 @@ export default function AnalyticsPage() {
         saveRate: number;
         skipRate: number;
         acceptanceRate: number;
-        totals: { likes: number; dislikes: number; saves: number; skips: number; impressions: number };
+        totals: {
+          likes: number;
+          dislikes: number;
+          saves: number;
+          skips: number;
+          impressions: number;
+          generations: number;
+        };
       }>('/analytics/overview'),
   });
 
@@ -23,7 +30,9 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <h1 className="font-serif text-4xl">Analytics</h1>
-      <p className="text-[var(--muted)]">Rates come from events Genie logs when you interact with recommendations.</p>
+      <p className="text-[var(--muted)]">
+        Rates come from interaction events; generations count each recommendation.generated batch.
+      </p>
       {overview.isPending ? <p className="text-sm text-[var(--muted)]">Loading analytics…</p> : null}
       {overview.isError ? (
         <p className="text-sm text-red-400">
@@ -46,13 +55,14 @@ export default function AnalyticsPage() {
               </Card>
             ))}
           </div>
-          <div className="grid gap-4 md:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
             {[
               ['Likes', data.totals.likes],
               ['Dislikes', data.totals.dislikes],
               ['Saves', data.totals.saves],
               ['Skips', data.totals.skips],
               ['Impressions', data.totals.impressions],
+              ['Generations', data.totals.generations],
             ].map(([label, value]) => (
               <Card key={String(label)}>
                 <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{label}</p>
