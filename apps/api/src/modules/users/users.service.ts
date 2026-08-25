@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ArrayMinSize, IsArray, IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { supportedMediaTypeValues, type MediaType } from '@recommendation-genie/types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
@@ -28,6 +28,7 @@ export class UpdateUserDto {
 
 export class UpdateMediaTypesDto {
   @IsArray()
+  @ArrayMinSize(1)
   @IsEnum(supportedMediaTypeValues, { each: true })
   mediaTypes!: MediaType[];
 }
@@ -97,6 +98,12 @@ export class UsersService {
   }
 
   async updateMediaTypes(user: AuthUser, dto: UpdateMediaTypesDto) {
+    if (dto.mediaTypes.length === 0) {
+      throw new BadRequestException({
+        code: 'MEDIA_TYPES_REQUIRED',
+        message: 'Select at least one media type',
+      });
+    }
     return this.prisma.client.userPreference.upsert({
       where: { userId: user.id },
       update: { enabledMediaTypes: dto.mediaTypes },
