@@ -74,11 +74,22 @@ export default function DashboardPage() {
           </p>
           <h1 className="mt-2 font-serif text-4xl">Genie has been thinking.</h1>
         </div>
-        <Button type="button" onClick={() => generate.mutate()}>
-          Refresh For You
+        <Button type="button" onClick={() => generate.mutate()} disabled={generate.isPending || recs.isFetching}>
+          {generate.isPending ? 'Refreshing…' : 'Refresh For You'}
         </Button>
       </div>
-      {hero ? (
+      {recs.isError || generate.isError ? (
+        <p className="text-sm text-red-400">
+          {(generate.error ?? recs.error) instanceof Error
+            ? (generate.error ?? recs.error)!.message
+            : 'Could not load recommendations. Try refreshing.'}
+        </p>
+      ) : null}
+      {recs.isPending && !hero ? (
+        <Card>
+          <p className="text-sm text-[var(--muted)]">Loading your For You picks…</p>
+        </Card>
+      ) : hero ? (
         <Card className="grid gap-6 md:grid-cols-[240px_1fr]">
           <MediaCard item={hero.media} score={hero.scores.final} />
           <div>
