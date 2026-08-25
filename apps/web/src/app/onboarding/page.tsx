@@ -50,7 +50,7 @@ type RecPreview = {
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [types, setTypes] = useState<string[]>(['MOVIE', 'GAME', 'MUSIC']);
+  const [types, setTypes] = useState<string[]>(['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW']);
   const [selected, setSelected] = useState<string[]>([]);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [favoriteGenres, setFavoriteGenres] = useState<string[]>(['sci-fi', 'thriller']);
@@ -281,7 +281,7 @@ export default function OnboardingPage() {
 
       {step === 0 ? (
         <div className="mt-8 flex flex-wrap gap-3">
-          {['MOVIE', 'GAME', 'MUSIC'].map((type) => (
+          {['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'].map((type) => (
             <button
               key={type}
               type="button"

@@ -8,7 +8,7 @@ import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/utils';
 
 const filters = ['ALL', 'LOVED', 'LIKED', 'SAVED', 'CONSUMED', 'REJECTED'] as const;
-const types = ['ALL', 'MOVIE', 'GAME', 'MUSIC'] as const;
+const types = ['ALL', 'MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'] as const;
 const sorts = [
   { value: 'RECENTLY_ADDED', label: 'Recently added' },
   { value: 'HIGHEST_RATED', label: 'Highest rated' },

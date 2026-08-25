@@ -4,7 +4,7 @@ import { createPrismaClient } from '../src/index';
 
 type SeedMedia = {
   id: string;
-  type: 'MOVIE' | 'GAME' | 'MUSIC';
+  type: 'MOVIE' | 'GAME' | 'MUSIC' | 'TV_SHOW';
   title: string;
   description: string;
   year: number;
@@ -631,6 +631,75 @@ const catalog: SeedMedia[] = [
     genres: ['crime', 'thriller', 'dark-comedy'],
     tags: ['crime', 'midwest', 'character', 'twist'],
     people: [{ name: 'Joel Coen', role: 'DIRECTOR' }],
+  },
+  {
+    id: 'media_severance',
+    type: 'TV_SHOW',
+    title: 'Severance',
+    description:
+      'Office workers surgically split work and personal memories, uncovering a corporate mystery with bleak humor.',
+    year: 2022,
+    language: 'en',
+    runtimeMinutes: 50,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/pPHpeI2X1qEdQBFV0Dm4Aeh3phI.jpg',
+    popularity: 0.78,
+    qualityScore: 0.92,
+    pacing: -0.1,
+    complexity: 0.85,
+    darkness: 0.55,
+    emotionalIntensity: 0.6,
+    genres: ['sci-fi', 'thriller', 'drama'],
+    tags: ['corporate', 'mystery', 'psychological', 'dystopia'],
+    people: [
+      { name: 'Dan Erickson', role: 'DIRECTOR' },
+      { name: 'Adam Scott', role: 'ACTOR' },
+    ],
+  },
+  {
+    id: 'media_andor',
+    type: 'TV_SHOW',
+    title: 'Andor',
+    description:
+      'A grounded Star Wars espionage series about rebellion, surveillance, and the cost of resistance.',
+    year: 2022,
+    language: 'en',
+    runtimeMinutes: 45,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/59SVNwLfoMnZbBDmgcyaw5AIPNg.jpg',
+    popularity: 0.74,
+    qualityScore: 0.93,
+    pacing: 0.15,
+    complexity: 0.8,
+    darkness: 0.6,
+    emotionalIntensity: 0.7,
+    genres: ['sci-fi', 'drama', 'thriller'],
+    tags: ['political', 'espionage', 'rebellion', 'atmospheric'],
+    people: [
+      { name: 'Tony Gilroy', role: 'DIRECTOR' },
+      { name: 'Diego Luna', role: 'ACTOR' },
+    ],
+  },
+  {
+    id: 'media_the_bear',
+    type: 'TV_SHOW',
+    title: 'The Bear',
+    description:
+      'A fine-dining chef returns to run his family sandwich shop in a frantic, heartfelt kitchen drama.',
+    year: 2022,
+    language: 'en',
+    runtimeMinutes: 30,
+    posterUrl: 'https://image.tmdb.org/t/p/w500/y8NTRtYADvGdAgZQNCiI5dqz1nP.jpg',
+    popularity: 0.81,
+    qualityScore: 0.9,
+    pacing: 0.7,
+    complexity: 0.55,
+    darkness: 0.35,
+    emotionalIntensity: 0.85,
+    genres: ['drama', 'comedy'],
+    tags: ['kitchen', 'family', 'anxiety', 'character'],
+    people: [
+      { name: 'Christopher Storer', role: 'DIRECTOR' },
+      { name: 'Jeremy Allen White', role: 'ACTOR' },
+    ],
   },
 ];
 
