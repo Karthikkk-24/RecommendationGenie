@@ -82,13 +82,17 @@ export default function SettingsPage() {
   };
 
   const save = useMutation({
-    mutationFn: (payload: { name?: string; preferredLanguage?: string; country?: string; imageUrl?: string }) =>
-      api('/users/me', { method: 'PATCH', body: JSON.stringify(payload) }),
+    mutationFn: (payload: {
+      name?: string;
+      preferredLanguage?: string | null;
+      country?: string | null;
+      imageUrl?: string | null;
+    }) => api('/users/me', { method: 'PATCH', body: JSON.stringify(payload) }),
     onSuccess: invalidateMe,
   });
 
   const saveBio = useMutation({
-    mutationFn: (payload: { bio?: string }) =>
+    mutationFn: (payload: { bio?: string | null }) =>
       api('/profiles/me', { method: 'PATCH', body: JSON.stringify(payload) }),
     onSuccess: invalidateMe,
   });
@@ -176,7 +180,7 @@ export default function SettingsPage() {
             onChange={(event) => setBio(event.target.value)}
             onBlur={() => {
               if (bio !== (me.data?.profile?.bio ?? '')) {
-                saveBio.mutate({ bio: bio || undefined });
+                saveBio.mutate({ bio: bio.trim() ? bio : null });
               }
             }}
             disabled={!hydrated}
@@ -190,7 +194,7 @@ export default function SettingsPage() {
             onChange={(event) => setImageUrl(event.target.value)}
             onBlur={() => {
               if (imageUrl !== (me.data?.imageUrl ?? '')) {
-                save.mutate({ imageUrl: imageUrl || undefined });
+                save.mutate({ imageUrl: imageUrl.trim() ? imageUrl.trim() : null });
               }
             }}
             disabled={!hydrated}
@@ -205,7 +209,9 @@ export default function SettingsPage() {
             onChange={(event) => setPreferredLanguage(event.target.value)}
             onBlur={() => {
               if (preferredLanguage !== (me.data?.preferredLanguage ?? '')) {
-                save.mutate({ preferredLanguage: preferredLanguage || undefined });
+                save.mutate({
+                  preferredLanguage: preferredLanguage.trim() ? preferredLanguage.trim() : null,
+                });
               }
             }}
             disabled={!hydrated}
@@ -220,7 +226,7 @@ export default function SettingsPage() {
             onChange={(event) => setCountry(event.target.value)}
             onBlur={() => {
               if (country !== (me.data?.country ?? '')) {
-                save.mutate({ country: country || undefined });
+                save.mutate({ country: country.trim() ? country.trim() : null });
               }
             }}
             disabled={!hydrated}
