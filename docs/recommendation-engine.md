@@ -15,7 +15,7 @@ Default weights (`v1.0`):
 
 - 30% content similarity
 - 25% taste match
-- 15% historical feedback
+- 15% historical feedback (`UserFeedback` actions on items and shared genres/tags/creators)
 - 10% creator
 - 10% quality
 - 10% exploration

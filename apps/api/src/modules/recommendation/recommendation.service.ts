@@ -11,7 +11,7 @@ import { MediaService } from '../media/media.service';
 import { TasteService } from '../taste/taste.service';
 import { CandidateGenerationService } from './candidate-generation.service';
 import { RecommendationConfigService } from './recommendation-config.service';
-import { combineScores, mmrSelect, moodAlignment, normalize01, weightsForMode } from './scoring';
+import { combineScores, mmrSelect, moodAlignment, normalize01, weightsForMode, buildFeedbackAffinity, scoreFromFeedbackHistory } from './scoring';
 
 @Injectable()
 export class RecommendationService {
@@ -71,6 +71,7 @@ export class RecommendationService {
     const pacingWeights = new Map(
       features.filter((f) => f.featureType === 'PACING').map((f) => [f.featureKey, f.weight]),
     );
+    const feedbackAffinity = await this.loadFeedbackAffinity(userId);
 
     const scored = items.map((item) => {
       const genres = item.genres.map((g) => g.genre.name);
@@ -104,7 +105,7 @@ export class RecommendationService {
         );
       }
       const tasteScore = this.avg(tasteParts);
-      const feedback = this.featureScore([...tags, ...themeKeys], new Map([...tagWeights, ...themeWeights]));
+      const feedback = scoreFromFeedbackHistory(item.id, [...tags, ...genres, ...creators], feedbackAffinity);
       const creator = this.featureScore(creators, creatorWeights);
       const quality = item.qualityScore;
       const novelty = 1 - item.popularity;
@@ -288,6 +289,7 @@ export class RecommendationService {
     const tags = item.tags.map((t) => t.tag.name);
     const creators = item.people.map((p) => p.person.name);
     const themeKeys = [...genres, ...tags];
+    const feedbackAffinity = await this.loadFeedbackAffinity(userId);
     const content = this.avg([
       this.featureScore(genres, genreWeights),
       this.featureScore(tags, tagWeights),
@@ -299,7 +301,7 @@ export class RecommendationService {
       1 - Math.abs(item.pacing - profile.pacing) / 2,
       this.featureScore(genres, genreWeights),
     ]);
-    const feedback = this.featureScore([...tags, ...themeKeys], new Map([...tagWeights, ...themeWeights]));
+    const feedback = scoreFromFeedbackHistory(item.id, [...tags, ...genres, ...creators], feedbackAffinity);
     const creator = this.featureScore(creators, creatorWeights);
     const novelty = 1 - item.popularity;
     const exploration = novelty * PIPELINE.explorationRatio;
@@ -399,6 +401,34 @@ export class RecommendationService {
     }
 
     return blocked;
+  }
+
+  private async loadFeedbackAffinity(userId: string) {
+    const rows = await this.prisma.client.userFeedback.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        mediaItem: {
+          include: {
+            genres: { include: { genre: true } },
+            tags: { include: { tag: true } },
+            people: { include: { person: true } },
+          },
+        },
+      },
+    });
+    return buildFeedbackAffinity(
+      rows.map((row) => ({
+        mediaItemId: row.mediaItemId,
+        action: row.action,
+        features: [
+          ...row.mediaItem.genres.map((g) => g.genre.name),
+          ...row.mediaItem.tags.map((t) => t.tag.name),
+          ...row.mediaItem.people.map((p) => p.person.name),
+        ],
+      })),
+    );
   }
 
   private pacingKeys(pacing: number): string[] {

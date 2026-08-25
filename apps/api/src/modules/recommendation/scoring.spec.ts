@@ -1,4 +1,11 @@
-import { combineScores, moodAlignment, weightsForMode, type ScoredCandidate } from './scoring';
+import {
+  buildFeedbackAffinity,
+  combineScores,
+  moodAlignment,
+  scoreFromFeedbackHistory,
+  weightsForMode,
+  type ScoredCandidate,
+} from './scoring';
 
 describe('scoring', () => {
   it('does not let popularity dominate a strong taste match', () => {
@@ -69,5 +76,17 @@ describe('scoring', () => {
       complexity: 0,
     });
     expect(dark).toBeGreaterThan(light);
+  });
+
+  it('scores candidates from UserFeedback history rather than taste tag weights', () => {
+    const affinity = buildFeedbackAffinity([
+      { mediaItemId: 'liked', action: 'LOVE', features: ['noir', 'Denis Villeneuve'] },
+      { mediaItemId: 'hated', action: 'NOT_FOR_ME', features: ['romance'] },
+    ]);
+    expect(scoreFromFeedbackHistory('liked', ['noir'], affinity)).toBeGreaterThan(0.5);
+    expect(scoreFromFeedbackHistory('hated', ['romance'], affinity)).toBeLessThan(-0.5);
+    expect(scoreFromFeedbackHistory('new', ['noir', 'Denis Villeneuve'], affinity)).toBeGreaterThan(
+      scoreFromFeedbackHistory('new', ['romance'], affinity),
+    );
   });
 });
