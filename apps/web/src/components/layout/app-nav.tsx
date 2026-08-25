@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { api } from '../../lib/utils';
@@ -21,6 +21,7 @@ const baseLinks = [
 
 export function AppNav() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const me = useQuery({
@@ -37,6 +38,7 @@ export function AppNav() {
     setLoggingOut(true);
     try {
       await api('/auth/logout', { method: 'POST' });
+      queryClient.clear();
       router.push('/');
     } catch {
       setLoggingOut(false);

@@ -27,12 +27,13 @@ export function Providers({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onExpired = () => {
+      client.clear();
       const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
       router.replace(`/login?next=${next}`);
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
-  }, [router]);
+  }, [client, router]);
 
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
