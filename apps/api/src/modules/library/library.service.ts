@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { LibraryFilter, LibrarySort, MediaType } from '@recommendation-genie/types';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { InteractionsService } from '../interactions/interactions.service';
 import { MediaService } from '../media/media.service';
 
 type Card = ReturnType<MediaService['toCard']>;
@@ -10,6 +11,7 @@ export class LibraryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly media: MediaService,
+    private readonly interactions: InteractionsService,
   ) {}
 
   async list(userId: string, filter: LibraryFilter, type?: MediaType, sort: LibrarySort = 'RECENTLY_ADDED') {
@@ -135,11 +137,8 @@ export class LibraryService {
   }
 
   async add(userId: string, mediaItemId: string) {
-    return this.prisma.client.savedItem.upsert({
-      where: { userId_mediaItemId: { userId, mediaItemId } },
-      update: {},
-      create: { userId, mediaItemId },
-    });
+    // Delegate to interactions so SAVE trains taste and emits analytics.
+    return this.interactions.create(userId, { mediaItemId, type: 'SAVE' });
   }
 
   async remove(userId: string, mediaItemId: string) {
