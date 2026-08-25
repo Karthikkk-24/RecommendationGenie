@@ -130,6 +130,9 @@ export default function SettingsPage() {
 
   const toggleMediaType = (type: MediaType) => {
     const next = mediaTypes.includes(type) ? mediaTypes.filter((t) => t !== type) : [...mediaTypes, type];
+    if (next.length === 0) {
+      return;
+    }
     setMediaTypes(next);
     saveMediaTypes.mutate({ mediaTypes: next });
   };
