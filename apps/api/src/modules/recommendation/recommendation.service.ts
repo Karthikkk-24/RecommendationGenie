@@ -384,6 +384,9 @@ export class RecommendationService {
     const rows = await this.prisma.client.userMediaInteraction.findMany({
       where: { userId, type: { in: [...types] } },
       select: { mediaItemId: true },
+      distinct: ['mediaItemId'],
+      take: 2000,
+      orderBy: { createdAt: 'desc' },
     });
     const blocked = new Set(rows.map((row) => row.mediaItemId));
 
@@ -391,6 +394,8 @@ export class RecommendationService {
       const saved = await this.prisma.client.savedItem.findMany({
         where: { userId },
         select: { mediaItemId: true },
+        take: 2000,
+        orderBy: { createdAt: 'desc' },
       });
       for (const row of saved) {
         blocked.add(row.mediaItemId);
@@ -398,6 +403,9 @@ export class RecommendationService {
       const consumed = await this.prisma.client.consumptionHistory.findMany({
         where: { userId },
         select: { mediaItemId: true },
+        distinct: ['mediaItemId'],
+        take: 2000,
+        orderBy: { consumedAt: 'desc' },
       });
       for (const row of consumed) {
         blocked.add(row.mediaItemId);
