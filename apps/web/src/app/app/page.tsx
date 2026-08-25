@@ -8,6 +8,7 @@ import { ScoreBreakdown } from '../../components/recommendations/score-breakdown
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { api } from '../../lib/utils';
+import { explanationRefetchInterval } from '../../lib/explanation-refresh';
 
 function greetingForHour(hour: number): string {
   if (hour < 12) {
@@ -49,6 +50,7 @@ export default function DashboardPage() {
   const recs = useQuery({
     queryKey: ['recs'],
     queryFn: () => api<RecResponse>('/recommendations?mode=FOR_YOU'),
+    refetchInterval: (query) => explanationRefetchInterval(query.state.data?.items),
   });
   const generate = useMutation({
     mutationFn: () =>
@@ -58,6 +60,7 @@ export default function DashboardPage() {
       }),
     onSuccess: (data) => {
       queryClient.setQueryData(['recs'], data);
+      void queryClient.invalidateQueries({ queryKey: ['recs'] });
     },
   });
   const items = generate.data?.items ?? recs.data?.items ?? [];

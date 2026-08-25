@@ -14,6 +14,7 @@ import { ScoreBreakdown } from '../../../components/recommendations/score-breakd
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { api } from '../../../lib/utils';
+import { explanationRefetchInterval } from '../../../lib/explanation-refresh';
 
 type RecResponse = {
   items: Array<{
@@ -41,6 +42,7 @@ export default function RecommendationsPage() {
   const recs = useQuery({
     queryKey: ['recs'],
     queryFn: () => api<RecResponse>('/recommendations?mode=FOR_YOU'),
+    refetchInterval: (query) => explanationRefetchInterval(query.state.data?.items),
   });
   const generate = useMutation({
     mutationFn: () =>
@@ -50,6 +52,7 @@ export default function RecommendationsPage() {
       }),
     onSuccess: (data) => {
       queryClient.setQueryData(['recs'], data);
+      void queryClient.invalidateQueries({ queryKey: ['recs'] });
     },
   });
 

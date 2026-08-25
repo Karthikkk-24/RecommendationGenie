@@ -9,6 +9,7 @@ import { RecommendationReason } from '../../../../components/recommendations/rec
 import { ScoreBreakdown } from '../../../../components/recommendations/score-breakdown';
 import { Card } from '../../../../components/ui/card';
 import { api } from '../../../../lib/utils';
+import { explanationRefetchInterval } from '../../../../lib/explanation-refresh';
 
 type GenerationDetail = {
   id: string;
@@ -41,6 +42,7 @@ export default function RecommendationDetailPage() {
     queryKey: ['recommendation', params.id],
     enabled: Boolean(params.id),
     queryFn: () => api<GenerationDetail>(`/recommendations/${params.id}`),
+    refetchInterval: (query) => explanationRefetchInterval(query.state.data?.items),
   });
 
   if (generation.isPending) {
