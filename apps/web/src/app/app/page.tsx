@@ -91,7 +91,7 @@ export default function DashboardPage() {
         </Card>
       ) : hero ? (
         <Card className="grid gap-6 md:grid-cols-[240px_1fr]">
-          <MediaCard item={hero.media} score={hero.scores.final} />
+          <MediaCard item={hero.media} score={hero.scores.final} showSave />
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-[var(--gold)]">Genie top pick</p>
             <h2 className="mt-2 font-serif text-3xl">{hero.media.title}</h2>
@@ -113,7 +113,7 @@ export default function DashboardPage() {
         <div className="flex gap-4 overflow-x-auto pb-4">
           {items.slice(1, 8).map((item) => (
             <div key={item.id} className="min-w-[180px]">
-              <MediaCard item={item.media} score={item.scores.final} explanation={item.explanation} />
+              <MediaCard item={item.media} score={item.scores.final} explanation={item.explanation} showSave />
               {item.reason ? <RecommendationReason text={item.reason} className="mt-2" /> : null}
               <ScoreBreakdown scores={item.scores} showHeadline={false} className="mt-2" />
             </div>
