@@ -22,8 +22,12 @@ Auth cookies: `rg_access`, `rg_refresh`. Refresh tokens are opaque (stored hashe
 | POST | /auth/reset-password | |
 | POST | /auth/verify-email | |
 | POST | /auth/resend-verification | |
-| GET | /users/me | |
+| POST | /auth/change-password | auth required; rotates cookies |
+| GET | /users/me | includes nested notification preference |
 | PATCH | /users/me | |
+| PATCH | /users/me/media-types | preferred media types |
+| GET | /users/me/notification-preferences | |
+| PATCH | /users/me/notification-preferences | |
 | DELETE | /users/me | |
 | GET | /profiles/me | |
 | PATCH | /profiles/me | |
@@ -62,5 +66,6 @@ Auth cookies: `rg_access`, `rg_refresh`. Refresh tokens are opaque (stored hashe
 | GET | /admin/health | ADMIN role |
 | GET | /admin/ai-failures | ADMIN role |
 | GET | /admin/algorithm-versions | ADMIN role |
+| PATCH | /admin/algorithm-versions/:id/activate | ADMIN role; activates version + product-update emails |
 
 Frontend calls `/api/...` which rewrites to the Nest routes above.
