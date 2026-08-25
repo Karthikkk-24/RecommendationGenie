@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TasteService } from '../taste/taste.service';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -13,6 +13,26 @@ export class InteractionsService {
   ) {}
 
   async create(userId: string, dto: CreateInteractionDto) {
+    const media = await this.prisma.client.mediaItem.findUnique({
+      where: { id: dto.mediaItemId },
+      select: { id: true },
+    });
+    if (!media) {
+      throw new NotFoundException({ code: 'MEDIA_NOT_FOUND', message: 'Media item not found' });
+    }
+    if (dto.recommendationItemId) {
+      const recommendationItem = await this.prisma.client.recommendationItem.findFirst({
+        where: { id: dto.recommendationItemId, generation: { userId } },
+        select: { id: true },
+      });
+      if (!recommendationItem) {
+        throw new NotFoundException({
+          code: 'RECOMMENDATION_ITEM_NOT_FOUND',
+          message: 'Recommendation item not found',
+        });
+      }
+    }
+
     const interaction = await this.prisma.client.userMediaInteraction.create({
       data: {
         userId,
