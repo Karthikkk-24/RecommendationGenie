@@ -30,6 +30,7 @@ export function MediaCard({
 }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const trackClick = () => {
     void api('/interactions', {
@@ -45,6 +46,7 @@ export function MediaCard({
       return;
     }
     setSaving(true);
+    setSaveError(null);
     try {
       await api('/library', {
         method: 'POST',
@@ -58,8 +60,8 @@ export function MediaCard({
           body: JSON.stringify({ mediaItemId: item.id, type: 'SAVE' }),
         });
         setSaved(true);
-      } catch {
-        setSaving(false);
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Could not save');
       }
     } finally {
       setSaving(false);
@@ -98,6 +100,7 @@ export function MediaCard({
         <h3 className="text-sm font-medium leading-tight">{item.title}</h3>
         <p className="line-clamp-1 text-xs text-[var(--muted)]">{item.genres.join(' · ')}</p>
         {explanation ? <p className="line-clamp-2 text-xs text-[var(--muted)]">{explanation}</p> : null}
+        {saveError ? <p className="text-xs text-red-400">{saveError}</p> : null}
       </div>
     </>
   );
