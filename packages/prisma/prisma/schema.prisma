@@ -124,7 +124,7 @@ model User {
   passwordHash         String
   name                 String
   imageUrl             String?
-  preferredLanguage    String            @default("en")
+  preferredLanguage    String?
   country              String?
   onboardingStatus     OnboardingStatus  @default(NOT_STARTED)
   emailVerifiedAt      DateTime?
