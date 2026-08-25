@@ -17,6 +17,7 @@ import { InteractionsModule } from './modules/interactions/interactions.module';
 import { LibraryModule } from './modules/library/library.module';
 import { MediaModule } from './modules/media/media.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { RecommendationModule } from './modules/recommendation/recommendation.module';
 import { SearchModule } from './modules/search/search.module';
@@ -53,6 +54,7 @@ import { UsersModule } from './modules/users/users.module';
     AdminModule,
     HealthModule,
     OnboardingModule,
+    NotificationsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

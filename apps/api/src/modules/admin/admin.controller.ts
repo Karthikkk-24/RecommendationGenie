@@ -1,7 +1,9 @@
-import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Patch, UseGuards } from '@nestjs/common';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { JOB_QUEUE } from '../../common/jobs/jobs.module';
+import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { RecommendationConfigService } from '../recommendation/recommendation-config.service';
@@ -14,6 +16,7 @@ export class AdminController {
     private readonly prisma: PrismaService,
     private readonly recommendationConfig: RecommendationConfigService,
     private readonly ai: AiService,
+    @Inject(JOB_QUEUE) private readonly jobs: JobQueue,
   ) {}
 
   @Get('health')
@@ -42,7 +45,11 @@ export class AdminController {
   }
 
   @Patch('algorithm-versions/:id/activate')
-  activateVersion(@Param('id') id: string) {
-    return this.recommendationConfig.activateVersion(id);
+  async activateVersion(@Param('id') id: string) {
+    const version = await this.recommendationConfig.activateVersion(id);
+    void this.jobs.enqueue('send-product-update-emails', {
+      message: `Genie activated algorithm version ${version.algorithmVersion}. Open Discover for a fresh batch.`,
+    });
+    return version;
   }
 }
