@@ -66,7 +66,8 @@ export default function LibraryPage() {
     },
   });
   const unsave = useMutation({
-    mutationFn: (mediaItemId: string) => api(`/library/${mediaItemId}`, { method: 'DELETE' }),
+    mutationFn: ({ mediaItemId, shelf }: { mediaItemId: string; shelf: (typeof filters)[number] }) =>
+      api(`/library/${mediaItemId}?filter=${shelf}`, { method: 'DELETE' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['library'] });
     },
@@ -137,13 +138,13 @@ export default function LibraryPage() {
             {rate.isError && rate.variables?.mediaItemId === item.id ? (
               <p className="text-xs text-red-400">Could not save rating</p>
             ) : null}
-            {filter === 'SAVED' ? (
+            {filter !== 'ALL' ? (
               <Button
                 type="button"
                 variant="ghost"
                 className="w-full text-xs"
                 disabled={unsave.isPending}
-                onClick={() => unsave.mutate(item.id)}
+                onClick={() => unsave.mutate({ mediaItemId: item.id, shelf: filter })}
               >
                 Remove
               </Button>
