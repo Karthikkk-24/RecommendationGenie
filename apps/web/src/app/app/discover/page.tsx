@@ -101,8 +101,10 @@ export default function DiscoverPage() {
   });
 
   const similarResults = flattenSearchResults(similarSearch.data);
-  const items = generate.data?.items ?? modeRecs.data?.items ?? [];
-  const isShortlistEmpty = activeMode === 'SHORTLIST' && !generate.isPending && items.length === 0;
+  // Prefer per-mode query cache only — never reuse generate.data from another mode.
+  const items = modeRecs.data?.items ?? [];
+  const isShortlistEmpty =
+    activeMode === 'SHORTLIST' && !generate.isPending && !modeRecs.isLoading && items.length === 0;
 
   return (
     <div className="space-y-6">
