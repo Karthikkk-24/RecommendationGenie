@@ -113,6 +113,19 @@ export default function LibraryPage() {
           </select>
         </label>
       </div>
+      {library.isLoading ? (
+        <p className="mt-8 text-sm text-[var(--muted)]">Loading library…</p>
+      ) : null}
+      {library.isError ? (
+        <p className="mt-8 text-sm text-red-400">
+          {library.error instanceof Error ? library.error.message : 'Could not load library.'}
+        </p>
+      ) : null}
+      {unsave.isError ? (
+        <p className="mt-4 text-sm text-red-400">
+          {unsave.error instanceof Error ? unsave.error.message : 'Could not remove saved item.'}
+        </p>
+      ) : null}
       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {(library.data ?? []).map((item) => (
           <div key={item.id} className="space-y-2">
@@ -138,7 +151,7 @@ export default function LibraryPage() {
           </div>
         ))}
       </div>
-      {!library.isLoading && (library.data?.length ?? 0) === 0 ? (
+      {!library.isLoading && !library.isError && (library.data?.length ?? 0) === 0 ? (
         <p className="mt-8 text-sm text-[var(--muted)]">Nothing in this shelf yet.</p>
       ) : null}
     </div>
