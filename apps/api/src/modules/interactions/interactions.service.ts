@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TasteService } from '../taste/taste.service';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -19,6 +19,12 @@ export class InteractionsService {
     });
     if (!media) {
       throw new NotFoundException({ code: 'MEDIA_NOT_FOUND', message: 'Media item not found' });
+    }
+    if (dto.type === 'RATED' && dto.rating === undefined) {
+      throw new BadRequestException({
+        code: 'RATING_REQUIRED',
+        message: 'Rating is required when interaction type is RATED',
+      });
     }
     if (dto.recommendationItemId) {
       const recommendationItem = await this.prisma.client.recommendationItem.findFirst({
