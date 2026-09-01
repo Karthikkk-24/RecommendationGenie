@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Suspense, useEffect, useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
@@ -11,6 +12,7 @@ import { api, safeNextPath } from '../../lib/utils';
 type Status = 'idle' | 'pending' | 'verifying' | 'success' | 'error';
 
 function VerifyEmailForm() {
+  const queryClient = useQueryClient();
   const params = useSearchParams();
   const token = params.get('token');
   const pending = params.get('pending') === '1';
@@ -50,6 +52,7 @@ function VerifyEmailForm() {
           method: 'POST',
           body: JSON.stringify({ token }),
         });
+        await queryClient.invalidateQueries({ queryKey: ['me'] });
         if (!cancelled) {
           setStatus('success');
           setMessage('Your email is verified. Genie is ready when you are.');
@@ -65,7 +68,7 @@ function VerifyEmailForm() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, queryClient]);
 
   const resendForm = (
     <form
