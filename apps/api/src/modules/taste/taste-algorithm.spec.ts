@@ -33,4 +33,9 @@ describe('TasteService algorithm', () => {
     expect(interactionSignal('LIKE')).toBe(1);
     expect(interactionSignal('LOVE')).toBe(1);
   });
+
+  it('ignores RATED interactions without a rating', () => {
+    expect(interactionSignal('RATED')).toBe(0);
+    expect(interactionSignal('RATED', 5)).toBeGreaterThan(0);
+  });
 });

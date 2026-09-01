@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min, ValidateIf } from 'class-validator';
 import { interactionTypeValues, type InteractionType } from '@recommendation-genie/types';
 
 export class CreateInteractionDto {
@@ -8,7 +8,7 @@ export class CreateInteractionDto {
   @IsEnum(interactionTypeValues)
   type!: InteractionType;
 
-  @IsOptional()
+  @ValidateIf((dto: CreateInteractionDto) => dto.type === 'RATED')
   @IsInt()
   @Min(1)
   @Max(5)

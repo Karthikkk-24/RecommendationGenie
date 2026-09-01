@@ -34,8 +34,8 @@ export function ratingToSignal(rating: number): number {
 
 /** Signed direction for an interaction type. Negative rates (SKIP, DISLIKE) push taste away. */
 export function interactionSignal(type: InteractionType, rating?: number): number {
-  if (type === 'RATED' && rating !== undefined) {
-    return ratingToSignal(rating);
+  if (type === 'RATED') {
+    return rating !== undefined ? ratingToSignal(rating) : 0;
   }
   const rate = INTERACTION_LEARNING_RATES[type];
   if (rate < 0) {
