@@ -52,6 +52,9 @@ export class RecommendationService {
       },
       include: this.media.cardInclude(),
     });
+    if (items.length === 0) {
+      return { items: [] };
+    }
     const { profile, features } = await this.taste.getProfile(userId);
     const baseWeights = await this.config.getActiveWeights();
     const weights = weightsForMode(input.mode, baseWeights);
