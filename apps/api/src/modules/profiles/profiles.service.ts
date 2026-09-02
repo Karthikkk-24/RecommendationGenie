@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
@@ -16,11 +16,11 @@ export class ProfilesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getMine(user: AuthUser) {
-    const profile = await this.prisma.client.profile.findUnique({ where: { userId: user.id } });
-    if (!profile) {
-      throw new NotFoundException({ code: 'PROFILE_NOT_FOUND', message: 'Profile not found' });
-    }
-    return profile;
+    return this.prisma.client.profile.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id, bio: null },
+    });
   }
 
   async updateMine(user: AuthUser, dto: UpdateProfileDto) {
