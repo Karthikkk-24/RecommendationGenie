@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import {
   supportedMediaTypeValues,
@@ -77,8 +77,21 @@ export class RecommendationController {
 
   @Post('generate')
   generate(@CurrentUser() user: AuthUser, @Body() dto: GenerateDto) {
+    const mode = dto.mode ?? 'FOR_YOU';
+    if (mode === 'SIMILAR_TO' && !dto.similarToId?.trim()) {
+      throw new BadRequestException({
+        code: 'SIMILAR_TO_ID_REQUIRED',
+        message: 'similarToId is required when mode is SIMILAR_TO',
+      });
+    }
+    if (mode === 'MOOD' && !dto.mood) {
+      throw new BadRequestException({
+        code: 'MOOD_REQUIRED',
+        message: 'mood is required when mode is MOOD',
+      });
+    }
     return this.recommendations.generate(user.id, {
-      mode: dto.mode ?? 'FOR_YOU',
+      mode,
       mediaType: dto.mediaType,
       similarToId: dto.similarToId,
       mood: dto.mood,
