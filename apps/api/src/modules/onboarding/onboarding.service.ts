@@ -189,6 +189,9 @@ export class OnboardingService {
         },
       },
     });
-    return { ok: true, feedback: dto.feedback };
+    await this.taste.snapshot(userId);
+    // Refresh For You so the post-onboarding feed reflects calibration (#273).
+    const generation = await this.recommendations.generate(userId, { mode: 'FOR_YOU', count: 10 });
+    return { ok: true, feedback: dto.feedback, generation };
   }
 }
