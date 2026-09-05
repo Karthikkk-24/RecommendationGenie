@@ -121,7 +121,15 @@ export function patchesFromFeedbackReason(reason: FeedbackReason, context?: { ge
     case 'NOT_MY_MOOD':
       return { scalar: { novelty: 0.4 } };
     case 'OTHER':
-      return {};
+      // Soft push away from this title's genres; free-text is stored separately.
+      return {
+        scalar: { novelty: 0.25 },
+        features: (context?.genres ?? []).slice(0, 3).map((genre) => ({
+          featureType: 'GENRE' as const,
+          featureKey: genre,
+          signal: -0.4,
+        })),
+      };
     default:
       return {};
   }

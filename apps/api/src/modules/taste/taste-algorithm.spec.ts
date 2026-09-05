@@ -26,6 +26,14 @@ describe('TasteService algorithm', () => {
     ]);
   });
 
+  it('applies a soft genre push-away for OTHER feedback', () => {
+    const patch = patchesFromFeedbackReason('OTHER', { genres: ['horror', 'thriller'] });
+    expect(patch.scalar?.novelty).toBeGreaterThan(0);
+    expect(patch.features?.[0]).toEqual(
+      expect.objectContaining({ featureType: 'GENRE', featureKey: 'horror', signal: -0.4 }),
+    );
+  });
+
   it('treats SKIP and MAYBE-equivalent rates as negative signals', () => {
     expect(interactionSignal('SKIP')).toBe(-1);
     expect(interactionSignal('DISLIKE')).toBe(-1);
