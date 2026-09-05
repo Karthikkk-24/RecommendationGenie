@@ -142,7 +142,20 @@ export class LibraryService {
   }
 
   async remove(userId: string, mediaItemId: string, filter: LibraryFilter = 'SAVED') {
-    if (filter === 'SAVED' || filter === 'ALL') {
+    if (filter === 'ALL') {
+      await this.prisma.client.savedItem.deleteMany({ where: { userId, mediaItemId } });
+      await this.prisma.client.consumptionHistory.deleteMany({ where: { userId, mediaItemId } });
+      await this.prisma.client.userMediaInteraction.deleteMany({
+        where: {
+          userId,
+          mediaItemId,
+          type: { in: ['SAVE', 'LOVE', 'LIKE', 'DISLIKE', 'CONSUMED'] },
+        },
+      });
+      return { ok: true };
+    }
+
+    if (filter === 'SAVED') {
       await this.prisma.client.savedItem.deleteMany({ where: { userId, mediaItemId } });
       await this.prisma.client.userMediaInteraction.deleteMany({
         where: { userId, mediaItemId, type: 'SAVE' },

@@ -138,17 +138,15 @@ export default function LibraryPage() {
             {rate.isError && rate.variables?.mediaItemId === item.id ? (
               <p className="text-xs text-red-400">Could not save rating</p>
             ) : null}
-            {filter !== 'ALL' ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full text-xs"
-                disabled={unsave.isPending}
-                onClick={() => unsave.mutate({ mediaItemId: item.id, shelf: filter })}
-              >
-                Remove
-              </Button>
-            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-xs"
+              disabled={unsave.isPending}
+              onClick={() => unsave.mutate({ mediaItemId: item.id, shelf: filter })}
+            >
+              Remove
+            </Button>
           </div>
         ))}
       </div>
