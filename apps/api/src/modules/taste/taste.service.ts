@@ -105,6 +105,7 @@ export class TasteService {
     userId: string,
     mediaItemId: string,
     reason: FeedbackReason,
+    otherText?: string,
   ): Promise<void> {
     const media = await this.prisma.client.mediaItem.findUnique({
       where: { id: mediaItemId },
@@ -117,6 +118,15 @@ export class TasteService {
       genres: media?.genres.map((row) => row.genre.name),
       creators: media?.people.map((row) => row.person.name),
     });
+    const trimmed = otherText?.trim();
+    if (reason === 'OTHER' && trimmed) {
+      // Bound free-text into a theme feature so custom reasons influence taste.
+      const key = trimmed.toLowerCase().slice(0, 48);
+      patch.features = [
+        ...(patch.features ?? []),
+        { featureType: 'THEME', featureKey: `other:${key}`, signal: -0.5 },
+      ];
+    }
     await this.applyPatch(userId, patch, 0.22);
   }
 

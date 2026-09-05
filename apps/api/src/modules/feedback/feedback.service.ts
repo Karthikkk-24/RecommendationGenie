@@ -69,7 +69,7 @@ export class FeedbackService {
     }
 
     if (dto.reason) {
-      await this.taste.applyFeedbackReason(userId, dto.mediaItemId, dto.reason);
+      await this.taste.applyFeedbackReason(userId, dto.mediaItemId, dto.reason, dto.otherText);
     }
     await this.jobs.enqueue('update-taste-profile', { userId });
     await this.jobs.enqueue('generate-recommendations', { userId, mode: 'FOR_YOU', count: 10 });
