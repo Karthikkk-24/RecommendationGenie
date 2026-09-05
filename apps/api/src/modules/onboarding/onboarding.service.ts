@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { JOB_QUEUE } from '../../common/jobs/jobs.module';
 import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -120,6 +120,7 @@ export class OnboardingService {
   }
 
   async complete(userId: string) {
+    await this.assertReadyToComplete(userId);
     await this.prisma.client.user.update({
       where: { id: userId },
       data: { onboardingStatus: 'COMPLETED' },
@@ -130,6 +131,36 @@ export class OnboardingService {
     // generate-recommendations job (that doubled batches/emails; see #271).
     void this.jobs.enqueue('update-taste-profile', { userId });
     return this.recommendations.generate(userId, { mode: 'FOR_YOU', count: 10 });
+  }
+
+  /** Require types + preferences before marking onboarding complete. */
+  private async assertReadyToComplete(userId: string): Promise<void> {
+    const user = await this.prisma.client.user.findUnique({
+      where: { id: userId },
+      include: { preference: true, profile: true },
+    });
+    if (!user) {
+      throw new BadRequestException({ code: 'USER_NOT_FOUND', message: 'User not found' });
+    }
+    if (user.onboardingStatus === 'COMPLETED') {
+      return;
+    }
+    const preference = user.preference;
+    const onboarding =
+      user.profile?.onboarding &&
+      typeof user.profile.onboarding === 'object' &&
+      !Array.isArray(user.profile.onboarding)
+        ? (user.profile.onboarding as Record<string, unknown>)
+        : {};
+    const step = typeof onboarding.step === 'number' ? onboarding.step : 0;
+    const hasMediaTypes = (preference?.enabledMediaTypes?.length ?? 0) > 0;
+    const hasFavorites = (preference?.favoriteGenres?.length ?? 0) > 0;
+    if (!hasMediaTypes || !hasFavorites || step < 4) {
+      throw new BadRequestException({
+        code: 'ONBOARDING_INCOMPLETE',
+        message: 'Finish media types and preferences before completing onboarding',
+      });
+    }
   }
 
   async calibrate(userId: string, dto: OnboardingCalibrateDto) {
