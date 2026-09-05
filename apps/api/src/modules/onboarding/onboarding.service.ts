@@ -126,7 +126,8 @@ export class OnboardingService {
     });
     await this.persistOnboarding(userId, { step: 5, completedAt: new Date().toISOString() });
     await this.taste.snapshot(userId);
-    void this.jobs.enqueue('generate-recommendations', { userId, mode: 'HIDDEN_GEMS', count: 10 });
+    // Single sync FOR_YOU generation for the preview — do not also enqueue another
+    // generate-recommendations job (that doubled batches/emails; see #271).
     void this.jobs.enqueue('update-taste-profile', { userId });
     return this.recommendations.generate(userId, { mode: 'FOR_YOU', count: 10 });
   }
