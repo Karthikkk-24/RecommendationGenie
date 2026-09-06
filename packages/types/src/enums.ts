@@ -4,13 +4,25 @@ export const mediaTypeValues = ['MOVIE', 'GAME', 'MUSIC', 'BOOK', 'TV_SHOW', 'AN
 export const mediaTypeSchema = z.enum(mediaTypeValues);
 export type MediaType = z.infer<typeof mediaTypeSchema>;
 
-/** Types with live/mock providers today — onboarding should only offer these. */
-export const supportedMediaTypeValues = ['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'] as const;
+/**
+ * Types users can enable for recommendations / onboarding / generate filters.
+ * BOOK, ANIME, PODCAST are catalogued via mock seed (and searchable); live external
+ * providers for those types may still be limited.
+ */
+export const supportedMediaTypeValues = [
+  'MOVIE',
+  'GAME',
+  'MUSIC',
+  'TV_SHOW',
+  'BOOK',
+  'ANIME',
+  'PODCAST',
+] as const;
 export const supportedMediaTypeSchema = z.enum(supportedMediaTypeValues);
 export type SupportedMediaType = z.infer<typeof supportedMediaTypeSchema>;
-export const activeMediaTypes = ['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'] as const satisfies readonly MediaType[];
+export const activeMediaTypes = supportedMediaTypeValues;
 
-/** BOOK, ANIME, PODCAST have schema support but no live provider yet — mock-only in dev. */
+/** @deprecated Prefer supportedMediaTypeValues — kept for call sites that distinguish mock-catalog types. */
 export const mockOnlyMediaTypeValues = ['BOOK', 'ANIME', 'PODCAST'] as const;
 
 export const userRoleValues = ['USER', 'ADMIN'] as const;
