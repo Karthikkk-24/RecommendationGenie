@@ -13,6 +13,7 @@ import { supportedMediaTypeValues, type MediaType } from '@recommendation-genie/
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { AuthService } from '../auth/auth.service';
+import { TasteService } from '../taste/taste.service';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -64,6 +65,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auth: AuthService,
+    private readonly taste: TasteService,
   ) {}
 
   async me(user: AuthUser) {
@@ -116,11 +118,13 @@ export class UsersService {
         message: 'Select at least one media type',
       });
     }
-    return this.prisma.client.userPreference.upsert({
+    const preference = await this.prisma.client.userPreference.upsert({
       where: { userId: user.id },
       update: { enabledMediaTypes: dto.mediaTypes },
       create: { userId: user.id, enabledMediaTypes: dto.mediaTypes },
     });
+    await this.taste.syncEnabledMediaTypes(user.id, dto.mediaTypes);
+    return preference;
   }
 
   async getNotificationPreferences(user: AuthUser) {

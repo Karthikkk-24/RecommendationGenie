@@ -140,6 +140,32 @@ export class TasteService {
     );
   }
 
+  /** Align MEDIA_TYPE taste features with Settings enabled media types. */
+  async syncEnabledMediaTypes(userId: string, mediaTypes: string[]): Promise<void> {
+    const enabled = [...new Set(mediaTypes)];
+    await this.prisma.client.tastePreference.deleteMany({
+      where: {
+        userId,
+        featureType: 'MEDIA_TYPE',
+        ...(enabled.length ? { featureKey: { notIn: enabled } } : {}),
+      },
+    });
+    if (enabled.length === 0) {
+      return;
+    }
+    await this.applyPatch(
+      userId,
+      {
+        features: enabled.map((mediaType) => ({
+          featureType: 'MEDIA_TYPE' as const,
+          featureKey: mediaType,
+          signal: 0.8,
+        })),
+      },
+      0.3,
+    );
+  }
+
   async snapshot(userId: string): Promise<void> {
     const { profile, features } = await this.getProfile(userId);
     await this.prisma.client.tasteProfileSnapshot.create({
