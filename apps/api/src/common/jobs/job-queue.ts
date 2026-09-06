@@ -6,6 +6,7 @@ export type JobName =
   | 'generate-embedding'
   | 'sync-media'
   | 'generate-ai-explanation'
+  | 'rerank-recommendations'
   | 'update-taste-profile'
   | 'send-recommendation-email'
   | 'send-digest-emails'
@@ -69,13 +70,15 @@ export class InlineJobQueue implements JobQueue {
       await this.prisma.client.analyticsEvent.create({
         data: {
           eventName: DEAD_LETTER_EVENT,
-          payload: {
-            jobName: name,
-            attempts: MAX_ATTEMPTS,
-            message,
-            payload,
-            failedAt: new Date().toISOString(),
-          },
+          payload: JSON.parse(
+            JSON.stringify({
+              jobName: name,
+              attempts: MAX_ATTEMPTS,
+              message,
+              payload,
+              failedAt: new Date().toISOString(),
+            }),
+          ),
         },
       });
     } catch (error: unknown) {
