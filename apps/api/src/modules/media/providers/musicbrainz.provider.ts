@@ -33,8 +33,35 @@ export class MusicBrainzProvider implements MediaProvider {
     return this.getPopular(input);
   }
 
-  async getSimilar(_externalId: string): Promise<NormalizedMedia[]> {
-    return [];
+  async getSimilar(externalId: string): Promise<NormalizedMedia[]> {
+    const seed = await this.getById(externalId);
+    if (!seed) {
+      return [];
+    }
+    const tag = seed.tags[0] ?? seed.genres[0];
+    if (tag) {
+      const safeTag = tag.replace(/[^\w\s-]/g, '').trim();
+      if (safeTag) {
+        const query = encodeURIComponent(`tag:"${safeTag}" AND NOT rgid:${externalId}`);
+        const payload = await this.getJson(
+          `https://musicbrainz.org/ws/2/release-group/?query=${query}&fmt=json&limit=12`,
+        );
+        const groups = Array.isArray(payload?.['release-groups']) ? payload['release-groups'] : [];
+        if (groups.length > 0) {
+          return groups.map((row: Record<string, unknown>) => this.normalize(row));
+        }
+      }
+    }
+    const artist = seed.people[0]?.name;
+    if (!artist) {
+      return [];
+    }
+    const query = encodeURIComponent(`artist:"${artist}" AND NOT rgid:${externalId}`);
+    const byArtist = await this.getJson(
+      `https://musicbrainz.org/ws/2/release-group/?query=${query}&fmt=json&limit=12`,
+    );
+    const groups = Array.isArray(byArtist?.['release-groups']) ? byArtist['release-groups'] : [];
+    return groups.map((row: Record<string, unknown>) => this.normalize(row));
   }
 
   async getDetails(externalId: string): Promise<NormalizedMedia> {
@@ -72,7 +99,7 @@ export class MusicBrainzProvider implements MediaProvider {
     };
   }
 
-  private async getJson(url: string): Promise<Record<string, never> | null> {
+  private async getJson(url: string): Promise<Record<string, unknown> | null> {
     try {
       const response = await fetch(url, {
         headers: { 'User-Agent': 'RecommendationGenie/1.0 (dev@localhost)' },
@@ -81,7 +108,7 @@ export class MusicBrainzProvider implements MediaProvider {
         this.logger.warn(`MusicBrainz ${response.status}`);
         return null;
       }
-      return (await response.json()) as Record<string, never>;
+      return (await response.json()) as Record<string, unknown>;
     } catch (error) {
       this.logger.warn(error);
       return null;
