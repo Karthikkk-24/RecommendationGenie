@@ -66,6 +66,18 @@ export class FeedbackService {
 
     if (dto.action === 'NEVER_THIS_TYPE') {
       await this.taste.applyMediaTypeBan(userId, media.type);
+      const preference = await this.prisma.client.userPreference.findUnique({ where: { userId } });
+      if (preference) {
+        const nextTypes = preference.enabledMediaTypes.filter((type) => type !== media.type);
+        // Keep at least one type so generate still has a catalog scope.
+        if (nextTypes.length > 0 && nextTypes.length !== preference.enabledMediaTypes.length) {
+          await this.prisma.client.userPreference.update({
+            where: { userId },
+            data: { enabledMediaTypes: nextTypes },
+          });
+          await this.taste.syncEnabledMediaTypes(userId, nextTypes);
+        }
+      }
     }
 
     if (dto.reason) {
