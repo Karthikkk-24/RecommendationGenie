@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { supportedMediaTypeValues } from '@recommendation-genie/types';
 import { MediaCard, type MediaCardData } from '../../components/media/media-card';
 import { RatingControl } from '../../components/media/rating-control';
 import { Button } from '../../components/ui/button';
@@ -75,7 +76,7 @@ function OnboardingPageInner() {
   const searchParams = useSearchParams();
   const nextAfterOnboarding = safeNextPath(searchParams.get('next'));
   const [step, setStep] = useState(0);
-  const [types, setTypes] = useState<string[]>(['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW']);
+  const [types, setTypes] = useState<string[]>([...supportedMediaTypeValues]);
   const [selected, setSelected] = useState<string[]>([]);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [favoriteGenres, setFavoriteGenres] = useState<string[]>(['sci-fi', 'thriller']);
@@ -314,7 +315,7 @@ function OnboardingPageInner() {
 
       {step === 0 ? (
         <div className="mt-8 flex flex-wrap gap-3">
-          {['MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'].map((type) => (
+          {supportedMediaTypeValues.map((type) => (
             <button
               key={type}
               type="button"
@@ -325,7 +326,7 @@ function OnboardingPageInner() {
               }
               className={`rounded-full border px-4 py-2 ${types.includes(type) ? 'border-[var(--gold)] text-[var(--gold)]' : 'border-[var(--line)]'}`}
             >
-              {type}
+              {type.replaceAll('_', ' ')}
             </button>
           ))}
         </div>
