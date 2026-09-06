@@ -66,7 +66,10 @@ export class EmbeddingService implements OnModuleInit {
 
   async embedUserTaste(userId: string): Promise<number[] | null> {
     const interactions = await this.prisma.client.userMediaInteraction.findMany({
-      where: { userId, type: { in: ['LOVE', 'LIKE', 'DISLIKE', 'NOT_INTERESTED'] } },
+      where: {
+        userId,
+        type: { in: ['LOVE', 'LIKE', 'DISLIKE', 'NOT_INTERESTED', 'SAVE', 'CONSUMED', 'RATED'] },
+      },
       select: { mediaItemId: true, type: true },
       take: 200,
     });
@@ -90,6 +93,9 @@ export class EmbeddingService implements OnModuleInit {
     const weights: Record<string, number> = {
       LOVE: 2,
       LIKE: 1,
+      SAVE: 0.8,
+      CONSUMED: 0.7,
+      RATED: 1,
       DISLIKE: -1,
       NOT_INTERESTED: -1.5,
     };
