@@ -5,6 +5,7 @@ import { MediaModule } from '../../modules/media/media.module';
 import { NotificationsModule } from '../../modules/notifications/notifications.module';
 import { RecommendationModule } from '../../modules/recommendation/recommendation.module';
 import { TasteModule } from '../../modules/taste/taste.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { InlineJobQueue } from './job-queue';
 import { JobHandlersService } from './job-handlers.service';
 
@@ -12,7 +13,15 @@ export const JOB_QUEUE = 'JOB_QUEUE';
 
 @Global()
 @Module({
-  imports: [EmbeddingModule, AiModule, MediaModule, RecommendationModule, TasteModule, NotificationsModule],
+  imports: [
+    PrismaModule,
+    EmbeddingModule,
+    AiModule,
+    MediaModule,
+    RecommendationModule,
+    TasteModule,
+    NotificationsModule,
+  ],
   providers: [
     { provide: JOB_QUEUE, useClass: InlineJobQueue },
     JobHandlersService,
