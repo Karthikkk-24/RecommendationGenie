@@ -100,6 +100,7 @@ export class InteractionsService {
 
     if (TASTE_SIGNAL_TYPES.has(dto.type)) {
       void this.jobs.enqueue('generate-embedding', { userId });
+      void this.jobs.enqueue('generate-recommendations', { userId, mode: 'FOR_YOU', count: 10 });
     }
 
     return interaction;
