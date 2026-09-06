@@ -48,8 +48,13 @@ export class JobHandlersService implements OnModuleInit, OnModuleDestroy {
       await this.embeddings.embedUserTaste(payload.userId);
     });
 
-    this.queue.register<{ userId: string }>('generate-embedding', async (payload) => {
-      await this.embeddings.embedUserTaste(payload.userId);
+    this.queue.register<{ userId?: string; mediaItemId?: string }>('generate-embedding', async (payload) => {
+      if (payload.mediaItemId) {
+        await this.embeddings.embedMedia(payload.mediaItemId);
+      }
+      if (payload.userId) {
+        await this.embeddings.embedUserTaste(payload.userId);
+      }
     });
 
     this.queue.register<{
@@ -77,7 +82,7 @@ export class JobHandlersService implements OnModuleInit, OnModuleDestroy {
 
     this.queue.register<{ mediaItemId: string }>('sync-media', async (payload) => {
       await this.media.syncFromProvider(payload.mediaItemId);
-      await this.embeddings.embedMedia(payload.mediaItemId);
+      await this.queue.enqueue('generate-embedding', { mediaItemId: payload.mediaItemId });
     });
 
     this.queue.register<{ userId: string; generationId: string }>(
