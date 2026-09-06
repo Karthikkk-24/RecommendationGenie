@@ -80,6 +80,17 @@ export class JobHandlersService implements OnModuleInit, OnModuleDestroy {
       });
     });
 
+    this.queue.register<{
+      userId: string;
+      generationId: string;
+      tasteSummary: string;
+      positives: string[];
+      negatives: string[];
+      candidates: Array<{ id: string; title: string; type: string; genres: string[]; score: number }>;
+    }>('rerank-recommendations', async (payload) => {
+      await this.recommendations.applyAiRerank(payload);
+    });
+
     this.queue.register<{ mediaItemId: string }>('sync-media', async (payload) => {
       await this.media.syncFromProvider(payload.mediaItemId);
       await this.queue.enqueue('generate-embedding', { mediaItemId: payload.mediaItemId });

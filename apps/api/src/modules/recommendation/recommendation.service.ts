@@ -144,30 +144,7 @@ export class RecommendationService {
 
     scored.sort((a, b) => b.final - a.final);
     const top = scored.slice(0, PIPELINE.scoredPoolSize);
-
-    const reranked = await this.ai.rerank({
-      userId,
-      tasteSummary: this.tasteSummary(profile, features),
-      positives: features.filter((f) => f.weight > 0.3).map((f) => f.featureKey),
-      negatives: features.filter((f) => f.weight < -0.3).map((f) => f.featureKey),
-      candidates: top.slice(0, PIPELINE.aiRerankSize).map((row) => ({
-        id: row.mediaId,
-        title: row.item.title,
-        type: row.item.type,
-        genres: row.item.genres.map((g) => g.genre.name),
-        score: row.final,
-      })),
-    });
-
-    const aiScores = new Map(reranked.map((row) => [row.mediaId, row]));
-    for (const row of top) {
-      const aiRow = aiScores.get(row.mediaId);
-      if (aiRow) {
-        row.ai = aiRow.aiScore;
-        row.final = row.final * 0.75 + aiRow.aiScore * 0.25;
-      }
-    }
-
+    // Deterministic ranking only on the request path — AI rerank runs async below.
     const diversified = mmrSelect(top, (a, b) => this.similarity(items, a, b), input.count);
     const likedTitles = liked.map((row) => row.mediaItem.title);
 
@@ -227,6 +204,21 @@ export class RecommendationService {
       });
     }
 
+    void this.jobs.enqueue('rerank-recommendations', {
+      userId,
+      generationId: generation.id,
+      tasteSummary: this.tasteSummary(profile, features),
+      positives: features.filter((f) => f.weight > 0.3).map((f) => f.featureKey),
+      negatives: features.filter((f) => f.weight < -0.3).map((f) => f.featureKey),
+      candidates: diversified.slice(0, PIPELINE.aiRerankSize).map((row) => ({
+        id: row.mediaId,
+        title: row.item.title,
+        type: row.item.type,
+        genres: row.item.genres.map((g) => g.genre.name),
+        score: row.final,
+      })),
+    });
+
     await this.analytics.track({
       userId,
       eventName: 'recommendation.generated',
@@ -239,6 +231,47 @@ export class RecommendationService {
       generationId: generation.id,
     });
     return this.serializeGeneration(generation);
+  }
+
+  /** Applies live AI scores after generate returns (non-blocking HTTP path). */
+  async applyAiRerank(input: {
+    userId: string;
+    generationId: string;
+    tasteSummary: string;
+    positives: string[];
+    negatives: string[];
+    candidates: Array<{ id: string; title: string; type: string; genres: string[]; score: number }>;
+  }): Promise<void> {
+    const generation = await this.prisma.client.recommendationGeneration.findFirst({
+      where: { id: input.generationId, userId: input.userId },
+      include: { items: true },
+    });
+    if (!generation || generation.items.length === 0) {
+      return;
+    }
+
+    const reranked = await this.ai.rerank({
+      userId: input.userId,
+      tasteSummary: input.tasteSummary,
+      positives: input.positives,
+      negatives: input.negatives,
+      candidates: input.candidates,
+    });
+    const aiScores = new Map(reranked.map((row) => [row.mediaId, row]));
+
+    for (const item of generation.items) {
+      const aiRow = aiScores.get(item.mediaItemId);
+      if (!aiRow) {
+        continue;
+      }
+      await this.prisma.client.recommendationItem.update({
+        where: { id: item.id },
+        data: {
+          aiScore: aiRow.aiScore,
+          finalScore: item.finalScore * 0.75 + aiRow.aiScore * 0.25,
+        },
+      });
+    }
   }
 
   async latest(userId: string, mode: GenerateRecommendationsInput['mode'] = 'FOR_YOU') {
