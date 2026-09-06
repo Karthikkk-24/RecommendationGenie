@@ -1,8 +1,21 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { JOB_QUEUE } from '../../common/jobs/jobs.module';
+import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TasteService } from '../taste/taste.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import type { CreateInteractionDto } from './dto/create-interaction.dto';
+
+const TASTE_SIGNAL_TYPES = new Set([
+  'LIKE',
+  'LOVE',
+  'DISLIKE',
+  'NOT_INTERESTED',
+  'SAVE',
+  'SKIP',
+  'CONSUMED',
+  'RATED',
+]);
 
 @Injectable()
 export class InteractionsService {
@@ -10,6 +23,7 @@ export class InteractionsService {
     private readonly prisma: PrismaService,
     private readonly taste: TasteService,
     private readonly analytics: AnalyticsService,
+    @Inject(JOB_QUEUE) private readonly jobs: JobQueue,
   ) {}
 
   async create(userId: string, dto: CreateInteractionDto) {
@@ -83,6 +97,10 @@ export class InteractionsService {
       eventName: `interaction.${dto.type.toLowerCase()}`,
       mediaItemId: dto.mediaItemId,
     });
+
+    if (TASTE_SIGNAL_TYPES.has(dto.type)) {
+      void this.jobs.enqueue('generate-embedding', { userId });
+    }
 
     return interaction;
   }
