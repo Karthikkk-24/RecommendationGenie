@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 export type JobName =
   | 'generate-recommendations'
@@ -19,11 +20,14 @@ export interface JobQueue {
 }
 
 const MAX_ATTEMPTS = 3;
+const DEAD_LETTER_EVENT = 'job.failed';
 
 @Injectable()
 export class InlineJobQueue implements JobQueue {
   private readonly logger = new Logger(InlineJobQueue.name);
   private readonly handlers = new Map<JobName, JobHandler>();
+
+  constructor(private readonly prisma: PrismaService) {}
 
   register<T>(name: JobName, handler: JobHandler<T>): void {
     this.handlers.set(name, handler as JobHandler);
@@ -43,6 +47,7 @@ export class InlineJobQueue implements JobQueue {
         const message = error instanceof Error ? error.message : 'unknown error';
         if (attempt >= MAX_ATTEMPTS) {
           this.logger.error(`Job ${name} failed after ${MAX_ATTEMPTS} attempts: ${message}`);
+          await this.recordDeadLetter(name, payload, message);
           return;
         }
         const delayMs = 250 * 2 ** (attempt - 1);
@@ -56,5 +61,27 @@ export class InlineJobQueue implements JobQueue {
     setImmediate(() => {
       void run(1);
     });
+  }
+
+  /** Persist permanent failures for admin/ops visibility (survives process restarts). */
+  private async recordDeadLetter(name: JobName, payload: unknown, message: string): Promise<void> {
+    try {
+      await this.prisma.client.analyticsEvent.create({
+        data: {
+          eventName: DEAD_LETTER_EVENT,
+          payload: {
+            jobName: name,
+            attempts: MAX_ATTEMPTS,
+            message,
+            payload,
+            failedAt: new Date().toISOString(),
+          },
+        },
+      });
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to persist dead-letter for ${name}: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
   }
 }

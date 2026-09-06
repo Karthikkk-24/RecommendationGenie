@@ -38,6 +38,15 @@ export class AdminController {
     });
   }
 
+  @Get('job-failures')
+  jobFailures() {
+    return this.prisma.client.analyticsEvent.findMany({
+      where: { eventName: 'job.failed' },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
   @Get('algorithm-versions')
   async versions() {
     await this.recommendationConfig.ensureDefault();
