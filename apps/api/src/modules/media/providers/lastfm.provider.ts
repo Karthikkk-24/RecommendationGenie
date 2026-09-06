@@ -40,8 +40,36 @@ export class LastfmProvider implements MediaProvider {
     return this.search({ ...input, query: 'electronic' });
   }
 
-  async getSimilar(_externalId: string): Promise<NormalizedMedia[]> {
-    return [];
+  async getSimilar(externalId: string): Promise<NormalizedMedia[]> {
+    const [artist] = externalId.split('::');
+    if (!artist) {
+      return [];
+    }
+    const payload = await this.getJson(
+      `artist.getSimilar&artist=${encodeURIComponent(artist)}&limit=8`,
+    );
+    const artistsRaw = (payload?.similarartists as { artist?: unknown })?.artist;
+    const similarArtists = Array.isArray(artistsRaw) ? artistsRaw : artistsRaw ? [artistsRaw] : [];
+    const albums = await Promise.all(
+      similarArtists.slice(0, 8).map(async (row: Record<string, unknown>) => {
+        const name = typeof row.name === 'string' ? row.name : null;
+        if (!name) {
+          return null;
+        }
+        const top = await this.getJson(
+          `artist.getTopAlbums&artist=${encodeURIComponent(name)}&limit=1`,
+        );
+        const albumList = (top?.topalbums as { album?: unknown })?.album;
+        const albumRows = Array.isArray(albumList) ? albumList : albumList ? [albumList] : [];
+        const album = albumRows[0] as Record<string, unknown> | undefined;
+        if (!album) {
+          return null;
+        }
+        // Top albums often omit nested artist; stamp the similar artist name.
+        return this.normalize({ ...album, artist: name });
+      }),
+    );
+    return albums.filter((item): item is NormalizedMedia => item !== null);
   }
 
   async getDetails(externalId: string): Promise<NormalizedMedia> {

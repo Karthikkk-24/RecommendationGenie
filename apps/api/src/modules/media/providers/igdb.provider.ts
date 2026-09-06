@@ -35,8 +35,23 @@ export class IgdbGameProvider implements MediaProvider {
     return this.getPopular(input);
   }
 
-  async getSimilar(_externalId: string): Promise<NormalizedMedia[]> {
-    return [];
+  async getSimilar(externalId: string): Promise<NormalizedMedia[]> {
+    const id = Number(externalId);
+    if (!Number.isFinite(id)) {
+      return [];
+    }
+    const seedRows = await this.queryRaw(
+      `where id = ${id}; fields similar_games; limit 1;`,
+    );
+    const similarIds = Array.isArray(seedRows[0]?.similar_games)
+      ? (seedRows[0].similar_games as number[]).filter((n) => Number.isFinite(n)).slice(0, 12)
+      : [];
+    if (similarIds.length === 0) {
+      return [];
+    }
+    return this.query(
+      `where id = (${similarIds.join(',')}); fields name,summary,first_release_date,rating,aggregated_rating,cover.url,genres.name,involved_companies.company.name; limit ${similarIds.length};`,
+    );
   }
 
   async getDetails(externalId: string): Promise<NormalizedMedia> {
@@ -48,6 +63,11 @@ export class IgdbGameProvider implements MediaProvider {
   }
 
   private async query(body: string): Promise<NormalizedMedia[]> {
+    const rows = await this.queryRaw(body);
+    return rows.map((row) => this.normalize(row));
+  }
+
+  private async queryRaw(body: string): Promise<Array<Record<string, unknown>>> {
     const token = await this.getToken();
     const clientId = this.config.get<string>('IGDB_CLIENT_ID');
     if (!token || !clientId) {
@@ -66,8 +86,7 @@ export class IgdbGameProvider implements MediaProvider {
         this.logger.warn(`IGDB ${response.status}`);
         return [];
       }
-      const rows = (await response.json()) as Array<Record<string, unknown>>;
-      return rows.map((row) => this.normalize(row));
+      return (await response.json()) as Array<Record<string, unknown>>;
     } catch (error) {
       this.logger.warn(error);
       return [];
