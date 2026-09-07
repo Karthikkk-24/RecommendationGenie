@@ -130,6 +130,13 @@ export default function DiscoverPage() {
   const items = modeRecs.data?.items ?? [];
   const isShortlistEmpty =
     activeMode === 'SHORTLIST' && !generate.isPending && !modeRecs.isLoading && items.length === 0;
+  const needsFirstGenerate =
+    !generate.isPending &&
+    !modeRecs.isLoading &&
+    !modeRecs.isError &&
+    !generate.isSuccess &&
+    items.length === 0 &&
+    !isShortlistEmpty;
 
   return (
     <div className="space-y-6">
@@ -231,6 +238,19 @@ export default function DiscoverPage() {
         </div>
       </div>
 
+      {modeRecs.isError ? (
+        <Card className="space-y-3">
+          <p className="text-sm text-red-400">
+            {modeRecs.error instanceof Error
+              ? modeRecs.error.message
+              : `Could not load ${activeMode.replaceAll('_', ' ')} recommendations.`}
+          </p>
+          <Button type="button" variant="ghost" onClick={() => void modeRecs.refetch()}>
+            Try again
+          </Button>
+        </Card>
+      ) : null}
+
       {generate.isPending ? (
         <Card>
           <p className="text-sm text-[var(--muted)]">Generating {activeMode.replaceAll('_', ' ')}…</p>
@@ -245,6 +265,22 @@ export default function DiscoverPage() {
         </Card>
       ) : null}
 
+      {needsFirstGenerate ? (
+        <Card className="space-y-3">
+          <p className="text-sm text-[var(--muted)]">
+            No {activeMode.replaceAll('_', ' ')} batch yet. Generate one to explore this mode — it won&apos;t replace
+            your For You feed.
+          </p>
+          <Button
+            type="button"
+            disabled={generate.isPending || (activeMode === 'SIMILAR_TO' && !similarToId)}
+            onClick={() => generate.mutate(activeMode)}
+          >
+            Generate {activeMode.replaceAll('_', ' ')}
+          </Button>
+        </Card>
+      ) : null}
+
       {isShortlistEmpty ? (
         <Card className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
@@ -254,7 +290,7 @@ export default function DiscoverPage() {
         </Card>
       ) : null}
 
-      {!generate.isPending && !isShortlistEmpty && generate.isSuccess && items.length === 0 ? (
+      {!generate.isPending && !isShortlistEmpty && !needsFirstGenerate && generate.isSuccess && items.length === 0 ? (
         <Card>
           <p className="text-sm text-[var(--muted)]">No candidates for this mode yet.</p>
         </Card>
