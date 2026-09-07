@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
@@ -17,6 +18,7 @@ import { api } from '../../../lib/utils';
 import { explanationRefetchInterval } from '../../../lib/explanation-refresh';
 
 type RecResponse = {
+  id?: string;
   items: Array<{
     id: string;
     explanation?: string;
@@ -56,13 +58,32 @@ export default function RecommendationsPage() {
     },
   });
 
-  const items = generate.data?.items ?? recs.data?.items ?? [];
+  const batch = generate.data ?? recs.data;
+  const items = batch?.items ?? [];
+  const generationId = batch?.id;
   const isBusy = recs.isLoading || generate.isPending;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-serif text-4xl">For you</h1>
+        <div className="space-y-2">
+          <h1 className="font-serif text-4xl">For you</h1>
+          {generationId || items.length > 0 ? (
+            <p className="text-sm text-[var(--muted)]">
+              {generationId ? (
+                <>
+                  <Link href={`/app/recommendations/${generationId}`} className="text-[var(--gold)] underline">
+                    View this batch
+                  </Link>
+                  <span className="mx-2">·</span>
+                </>
+              ) : null}
+              <Link href="/app/history" className="underline hover:text-[var(--fg)]">
+                Recommendation history
+              </Link>
+            </p>
+          ) : null}
+        </div>
         <Button type="button" onClick={() => generate.mutate()} disabled={generate.isPending}>
           {generate.isPending ? 'Generating…' : items.length ? 'Refresh' : 'Generate recommendations'}
         </Button>
