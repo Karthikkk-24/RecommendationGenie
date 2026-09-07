@@ -90,6 +90,7 @@ export default function TastePage() {
       void queryClient.invalidateQueries({ queryKey: ['taste-history'] });
       void queryClient.invalidateQueries({ queryKey: ['taste-evo'] });
       void queryClient.invalidateQueries({ queryKey: ['me'] });
+      void queryClient.invalidateQueries({ queryKey: ['recs'] });
     },
   });
 
