@@ -47,7 +47,11 @@ export function FeedbackControl({
     onSuccess: () => {
       setOtherOpen(false);
       setOtherText('');
-      void queryClient.invalidateQueries();
+      void queryClient.invalidateQueries({ queryKey: ['recs'] });
+      void queryClient.invalidateQueries({ queryKey: ['library'] });
+      void queryClient.invalidateQueries({ queryKey: ['taste'] });
+      void queryClient.invalidateQueries({ queryKey: ['taste-history'] });
+      void queryClient.invalidateQueries({ queryKey: ['taste-evo'] });
     },
   });
 
