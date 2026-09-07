@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TASTE } from '@recommendation-genie/config';
 import type { FeedbackReason, InteractionType } from '@recommendation-genie/types';
+import { JOB_QUEUE } from '../../common/jobs/jobs.module';
+import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   applyPreferenceUpdate,
@@ -14,7 +16,10 @@ import {
 
 @Injectable()
 export class TasteService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(JOB_QUEUE) private readonly jobs: JobQueue,
+  ) {}
 
   async getProfile(userId: string) {
     const profile = await this.prisma.client.tasteProfile.upsert({
@@ -397,6 +402,8 @@ export class TasteService {
     });
 
     await this.snapshot(userId);
+    void this.jobs.enqueue('generate-recommendations', { userId, mode: 'FOR_YOU', count: 10 });
+    void this.jobs.enqueue('generate-embedding', { userId });
     return preference;
   }
 
