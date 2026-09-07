@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import type { MouseEvent } from 'react';
 import { useState } from 'react';
@@ -28,6 +29,7 @@ export function MediaCard({
   showSave?: boolean;
   disableNavigation?: boolean;
 }) {
+  const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -53,6 +55,7 @@ export function MediaCard({
         body: JSON.stringify({ mediaItemId: item.id }),
       });
       setSaved(true);
+      void queryClient.invalidateQueries({ queryKey: ['library'] });
     } catch {
       try {
         await api('/interactions', {
@@ -60,6 +63,7 @@ export function MediaCard({
           body: JSON.stringify({ mediaItemId: item.id, type: 'SAVE' }),
         });
         setSaved(true);
+        void queryClient.invalidateQueries({ queryKey: ['library'] });
       } catch (err) {
         setSaveError(err instanceof Error ? err.message : 'Could not save');
       }
