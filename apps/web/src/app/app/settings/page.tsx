@@ -55,6 +55,7 @@ export default function SettingsPage() {
     productUpdates: true,
   });
   const [hydrated, setHydrated] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   const me = useQuery({
     queryKey: ['me'],
@@ -77,8 +78,20 @@ export default function SettingsPage() {
     setHydrated(true);
   }, [me.data, hydrated]);
 
+  useEffect(() => {
+    if (!saveStatus) {
+      return;
+    }
+    const timer = setTimeout(() => setSaveStatus(null), 2500);
+    return () => clearTimeout(timer);
+  }, [saveStatus]);
+
   const invalidateMe = () => {
     void queryClient.invalidateQueries({ queryKey: ['me'] });
+  };
+
+  const markSaved = (message = 'Saved') => {
+    setSaveStatus(message);
   };
 
   const save = useMutation({
@@ -88,25 +101,37 @@ export default function SettingsPage() {
       country?: string | null;
       imageUrl?: string | null;
     }) => api('/users/me', { method: 'PATCH', body: JSON.stringify(payload) }),
-    onSuccess: invalidateMe,
+    onSuccess: () => {
+      invalidateMe();
+      markSaved();
+    },
   });
 
   const saveBio = useMutation({
     mutationFn: (payload: { bio?: string | null }) =>
       api('/profiles/me', { method: 'PATCH', body: JSON.stringify(payload) }),
-    onSuccess: invalidateMe,
+    onSuccess: () => {
+      invalidateMe();
+      markSaved();
+    },
   });
 
   const saveMediaTypes = useMutation({
     mutationFn: (payload: { mediaTypes: MediaType[] }) =>
       api('/users/me/media-types', { method: 'PATCH', body: JSON.stringify(payload) }),
-    onSuccess: invalidateMe,
+    onSuccess: () => {
+      invalidateMe();
+      markSaved('Media types updated');
+    },
   });
 
   const saveNotifications = useMutation({
     mutationFn: (payload: Partial<NotificationPreferences>) =>
       api('/users/me/notification-preferences', { method: 'PATCH', body: JSON.stringify(payload) }),
-    onSuccess: invalidateMe,
+    onSuccess: () => {
+      invalidateMe();
+      markSaved('Notification preferences updated');
+    },
   });
 
   const changePassword = useMutation({
@@ -115,6 +140,7 @@ export default function SettingsPage() {
     onSuccess: () => {
       setCurrentPassword('');
       setNewPassword('');
+      markSaved('Password updated. You are still signed in.');
     },
   });
 
@@ -264,6 +290,11 @@ export default function SettingsPage() {
             {settingsError instanceof Error ? settingsError.message : 'Could not save settings.'}
           </p>
         ) : null}
+        {saveStatus && !settingsError ? (
+          <p className="text-sm text-[var(--gold)]" role="status">
+            {saveStatus}
+          </p>
+        ) : null}
         <Button type="button" variant="ghost" onClick={() => logout.mutate()}>
           Log out
         </Button>
@@ -340,9 +371,6 @@ export default function SettingsPage() {
         >
           {changePassword.isPending ? 'Updating…' : 'Update password'}
         </Button>
-        {changePassword.isSuccess ? (
-          <p className="text-sm text-[var(--gold)]">Password updated. You are still signed in.</p>
-        ) : null}
       </Card>
 
       <Card className="space-y-4 border-[var(--danger,#a33)]/40">
