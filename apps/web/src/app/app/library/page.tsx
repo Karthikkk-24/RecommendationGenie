@@ -1,5 +1,6 @@
 'use client';
 
+import { supportedMediaTypeValues } from '@recommendation-genie/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
@@ -8,7 +9,7 @@ import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/utils';
 
 const filters = ['ALL', 'LOVED', 'LIKED', 'SAVED', 'CONSUMED', 'REJECTED'] as const;
-const types = ['ALL', 'MOVIE', 'GAME', 'MUSIC', 'TV_SHOW'] as const;
+const types = ['ALL', ...supportedMediaTypeValues] as const;
 const sorts = [
   { value: 'RECENTLY_ADDED', label: 'Recently added' },
   { value: 'HIGHEST_RATED', label: 'Highest rated' },
