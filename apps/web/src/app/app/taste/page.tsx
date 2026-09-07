@@ -275,7 +275,11 @@ export default function TastePage() {
           </p>
         ) : null}
       </Card>
-      {taste.isError ? (
+      {taste.isPending ? (
+        <Card>
+          <p className="text-sm text-[var(--muted)]">Loading your taste profile…</p>
+        </Card>
+      ) : taste.isError ? (
         <p className="text-sm text-red-400">
           {taste.error instanceof Error ? taste.error.message : 'Could not load taste profile.'}
         </p>
@@ -291,7 +295,9 @@ export default function TastePage() {
             ].map(([label, value]) => (
               <Card key={String(label)}>
                 <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{label}</p>
-                <p className="mt-2 font-serif text-4xl">{toPercent(value as number)}%</p>
+                <p className="mt-2 font-serif text-4xl">
+                  {typeof value === 'number' ? `${toPercent(value)}%` : '—'}
+                </p>
               </Card>
             ))}
           </div>
