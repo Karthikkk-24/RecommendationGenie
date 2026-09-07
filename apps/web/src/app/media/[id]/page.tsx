@@ -18,6 +18,7 @@ export default function MediaDetailsPage() {
   const viewedRef = useRef(false);
   const [rating, setRating] = useState(0);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [savedToLibrary, setSavedToLibrary] = useState(false);
 
   const session = useQuery({
     queryKey: ['me'],
@@ -118,6 +119,27 @@ export default function MediaDetailsPage() {
     },
   });
 
+  const saveToLibrary = useMutation({
+    mutationFn: async () => {
+      try {
+        await api('/library', {
+          method: 'POST',
+          body: JSON.stringify({ mediaItemId: params.id }),
+        });
+      } catch {
+        await api('/interactions', {
+          method: 'POST',
+          body: JSON.stringify({ mediaItemId: params.id, type: 'SAVE' }),
+        });
+      }
+    },
+    onSuccess: () => {
+      setSavedToLibrary(true);
+      setSavedMessage('Saved to library');
+      void queryClient.invalidateQueries({ queryKey: ['library'] });
+    },
+  });
+
   if (media.isPending) {
     return <p className="p-10 text-[var(--muted)]">Loading…</p>;
   }
@@ -199,6 +221,21 @@ export default function MediaDetailsPage() {
             </Card>
           ) : (
             <div className="mt-6 space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setSavedMessage(null);
+                    saveToLibrary.mutate();
+                  }}
+                  disabled={savedToLibrary || saveToLibrary.isPending}
+                >
+                  {savedToLibrary ? 'Saved' : saveToLibrary.isPending ? 'Saving…' : 'Save to library'}
+                </Button>
+                {saveToLibrary.isError ? (
+                  <p className="text-xs text-red-400">Could not save. Try again.</p>
+                ) : null}
+              </div>
               <div>
                 <p className="mb-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Your rating</p>
                 <RatingControl
@@ -218,7 +255,7 @@ export default function MediaDetailsPage() {
                 {rate.isError && !rate.isPending ? (
                   <p className="mt-1 text-xs text-red-400">Could not save rating. Try again.</p>
                 ) : null}
-                {savedMessage && !rate.isPending && !rate.isError ? (
+                {savedMessage && !rate.isPending && !rate.isError && !saveToLibrary.isPending ? (
                   <p className="mt-1 text-xs text-[var(--gold)]">{savedMessage}</p>
                 ) : null}
               </div>
