@@ -139,6 +139,33 @@ export default function DiscoverPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.timeAvailableMinutes, filters.language, filters.mediaType, filters.count]);
 
+  const skipMoodEffect = useRef(true);
+  useEffect(() => {
+    if (skipMoodEffect.current) {
+      skipMoodEffect.current = false;
+      return;
+    }
+    if (activeMode !== 'MOOD') {
+      return;
+    }
+    generate.mutate('MOOD');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mood]);
+
+  const skipSimilarEffect = useRef(true);
+  useEffect(() => {
+    if (skipSimilarEffect.current) {
+      skipSimilarEffect.current = false;
+      return;
+    }
+    if (!similarToId) {
+      return;
+    }
+    setActiveMode('SIMILAR_TO');
+    generate.mutate('SIMILAR_TO');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [similarToId]);
+
   const similarResults = flattenSearchResults(similarSearch.data);
   // Prefer per-mode query cache only — never reuse generate.data from another mode.
   const items = modeRecs.data?.items ?? [];
