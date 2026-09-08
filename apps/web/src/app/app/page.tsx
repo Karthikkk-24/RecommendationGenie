@@ -115,10 +115,11 @@ export default function DashboardPage() {
         <h2 className="mb-4 font-serif text-2xl">Because you loved these textures</h2>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {items.slice(1, 8).map((item) => (
-            <div key={item.id} className="min-w-[180px]">
+            <div key={item.id} className="min-w-[220px] max-w-[240px] space-y-3">
               <MediaCard item={item.media} score={item.scores.final} explanation={item.explanation} showSave />
               {item.reason ? <RecommendationReason text={item.reason} className="mt-2" /> : null}
               <ScoreBreakdown scores={item.scores} showHeadline={false} className="mt-2" />
+              <FeedbackControl mediaItemId={item.media.id} recommendationItemId={item.id} />
             </div>
           ))}
         </div>
