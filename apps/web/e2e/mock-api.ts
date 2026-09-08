@@ -103,6 +103,44 @@ export async function mockProductApi(page: Page, options?: { role?: string; onbo
       );
     }
 
+    if (method === 'GET' && path === '/recommendations/history') {
+      return route.fulfill(
+        ok({
+          items: [
+            {
+              id: 'gen-1',
+              createdAt: new Date().toISOString(),
+              mode: 'FOR_YOU',
+              algorithmVersion: 'v1',
+              items: [recItem],
+            },
+          ],
+          nextCursor: null,
+        }),
+      );
+    }
+
+    if (method === 'GET' && path.startsWith('/recommendations/match/')) {
+      return route.fulfill(
+        ok({
+          scores: {
+            final: 0.86,
+            content: 0.8,
+            taste: 0.9,
+            feedback: 0.5,
+            creator: 0.5,
+            quality: 0.9,
+            novelty: 0.4,
+            exploration: 0.3,
+          },
+        }),
+      );
+    }
+
+    if (method === 'GET' && /^\/recommendations\/[^/]+$/.test(path)) {
+      return route.fulfill(ok({ id: path.split('/').pop(), mode: 'FOR_YOU', items: [recItem] }));
+    }
+
     if (method === 'GET' && path.startsWith('/recommendations')) {
       const mode = url.searchParams.get('mode') ?? 'FOR_YOU';
       return route.fulfill(ok({ id: 'gen-1', mode, items: [recItem] }));
@@ -145,7 +183,7 @@ export async function mockProductApi(page: Page, options?: { role?: string; onbo
           saveRate: 0.2,
           skipRate: 0.1,
           acceptanceRate: 0.6,
-          totals: { likes: 5, dislikes: 1, saves: 2, skips: 1, impressions: 10 },
+          totals: { likes: 5, dislikes: 1, saves: 2, skips: 1, impressions: 10, generations: 3 },
         }),
       );
     }
@@ -168,23 +206,6 @@ export async function mockProductApi(page: Page, options?: { role?: string; onbo
 
     if (method === 'POST' && path === '/library') {
       return route.fulfill(ok({ ok: true }));
-    }
-
-    if (method === 'GET' && path.startsWith('/recommendations/match/')) {
-      return route.fulfill(
-        ok({
-          scores: {
-            final: 0.86,
-            content: 0.8,
-            taste: 0.9,
-            feedback: 0.5,
-            creator: 0.5,
-            quality: 0.9,
-            novelty: 0.4,
-            exploration: 0.3,
-          },
-        }),
-      );
     }
 
     if (method === 'GET' && /\/media\/[^/]+\/similar$/.test(path)) {
