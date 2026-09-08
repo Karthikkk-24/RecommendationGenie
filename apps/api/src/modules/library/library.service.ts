@@ -1,8 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import type { LibraryFilter, LibrarySort, MediaType } from '@recommendation-genie/types';
+import { Inject, Injectable } from '@nestjs/common';
+import type { InteractionType, LibraryFilter, LibrarySort, MediaType } from '@recommendation-genie/types';
+import { JOB_QUEUE } from '../../common/jobs/jobs.module';
+import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { InteractionsService } from '../interactions/interactions.service';
 import { MediaService } from '../media/media.service';
+import { TasteService } from '../taste/taste.service';
 
 type Card = ReturnType<MediaService['toCard']>;
 
@@ -12,6 +15,8 @@ export class LibraryService {
     private readonly prisma: PrismaService,
     private readonly media: MediaService,
     private readonly interactions: InteractionsService,
+    private readonly taste: TasteService,
+    @Inject(JOB_QUEUE) private readonly jobs: JobQueue,
   ) {}
 
   async list(userId: string, filter: LibraryFilter, type?: MediaType, sort: LibrarySort = 'RECENTLY_ADDED') {
@@ -143,6 +148,7 @@ export class LibraryService {
 
   async remove(userId: string, mediaItemId: string, filter: LibraryFilter = 'SAVED') {
     if (filter === 'ALL') {
+      await this.reverseTasteForTypes(userId, mediaItemId, ['SAVE', 'LOVE', 'LIKE', 'DISLIKE', 'CONSUMED']);
       await this.prisma.client.savedItem.deleteMany({ where: { userId, mediaItemId } });
       await this.prisma.client.consumptionHistory.deleteMany({ where: { userId, mediaItemId } });
       await this.prisma.client.userMediaInteraction.deleteMany({
@@ -152,14 +158,17 @@ export class LibraryService {
           type: { in: ['SAVE', 'LOVE', 'LIKE', 'DISLIKE', 'CONSUMED'] },
         },
       });
+      this.enqueueTasteRefresh(userId);
       return { ok: true };
     }
 
     if (filter === 'SAVED') {
+      await this.reverseTasteForTypes(userId, mediaItemId, ['SAVE']);
       await this.prisma.client.savedItem.deleteMany({ where: { userId, mediaItemId } });
       await this.prisma.client.userMediaInteraction.deleteMany({
         where: { userId, mediaItemId, type: 'SAVE' },
       });
+      this.enqueueTasteRefresh(userId);
       return { ok: true };
     }
 
@@ -178,6 +187,7 @@ export class LibraryService {
       return { ok: true };
     }
 
+    await this.reverseTasteForTypes(userId, mediaItemId, [interactionType]);
     await this.prisma.client.userMediaInteraction.deleteMany({
       where: { userId, mediaItemId, type: interactionType },
     });
@@ -186,6 +196,29 @@ export class LibraryService {
       await this.prisma.client.consumptionHistory.deleteMany({ where: { userId, mediaItemId } });
     }
 
+    this.enqueueTasteRefresh(userId);
     return { ok: true };
+  }
+
+  private async reverseTasteForTypes(
+    userId: string,
+    mediaItemId: string,
+    types: InteractionType[],
+  ): Promise<void> {
+    for (const type of types) {
+      const existing = await this.prisma.client.userMediaInteraction.findFirst({
+        where: { userId, mediaItemId, type },
+        select: { id: true },
+      });
+      if (!existing) {
+        continue;
+      }
+      await this.taste.applyInteraction({ userId, mediaItemId, type, invert: true });
+    }
+  }
+
+  private enqueueTasteRefresh(userId: string): void {
+    void this.jobs.enqueue('generate-embedding', { userId });
+    void this.jobs.enqueue('generate-recommendations', { userId, mode: 'FOR_YOU', count: 10 });
   }
 }
