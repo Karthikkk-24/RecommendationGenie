@@ -101,9 +101,12 @@ export default function SettingsPage() {
       country?: string | null;
       imageUrl?: string | null;
     }) => api('/users/me', { method: 'PATCH', body: JSON.stringify(payload) }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       invalidateMe();
       markSaved();
+      if (variables.preferredLanguage !== undefined || variables.country !== undefined) {
+        void queryClient.invalidateQueries({ queryKey: ['recs'] });
+      }
     },
   });
 

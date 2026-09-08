@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   ArrayMinSize,
   IsArray,
@@ -10,6 +10,8 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { supportedMediaTypeValues, type MediaType } from '@recommendation-genie/types';
+import { JOB_QUEUE } from '../../common/jobs/jobs.module';
+import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { AuthService } from '../auth/auth.service';
@@ -66,6 +68,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly auth: AuthService,
     private readonly taste: TasteService,
+    @Inject(JOB_QUEUE) private readonly jobs: JobQueue,
   ) {}
 
   async me(user: AuthUser) {
@@ -89,7 +92,11 @@ export class UsersService {
   }
 
   async updateMe(user: AuthUser, dto: UpdateUserDto) {
-    return this.prisma.client.user.update({
+    const before = await this.prisma.client.user.findUnique({
+      where: { id: user.id },
+      select: { preferredLanguage: true, country: true },
+    });
+    const updated = await this.prisma.client.user.update({
       where: { id: user.id },
       data: dto,
       select: {
@@ -105,6 +112,17 @@ export class UsersService {
         role: true,
       },
     });
+    const localeChanged =
+      (dto.preferredLanguage !== undefined && dto.preferredLanguage !== before?.preferredLanguage) ||
+      (dto.country !== undefined && dto.country !== before?.country);
+    if (localeChanged) {
+      void this.jobs.enqueue('generate-recommendations', {
+        userId: user.id,
+        mode: 'FOR_YOU',
+        count: 10,
+      });
+    }
+    return updated;
   }
 
   async deleteMe(user: AuthUser): Promise<void> {
