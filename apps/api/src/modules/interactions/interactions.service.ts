@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { InteractionType } from '@recommendation-genie/types';
 import { JOB_QUEUE } from '../../common/jobs/jobs.module';
 import type { JobQueue } from '../../common/jobs/job-queue';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -15,6 +16,17 @@ const TASTE_SIGNAL_TYPES = new Set([
   'SKIP',
   'CONSUMED',
   'RATED',
+]);
+
+/** Types that should not re-apply taste/analytics when already present for the same title. */
+const IDEMPOTENT_TYPES = new Set<InteractionType>([
+  'LIKE',
+  'LOVE',
+  'DISLIKE',
+  'NOT_INTERESTED',
+  'SAVE',
+  'SKIP',
+  'CONSUMED',
 ]);
 
 @Injectable()
@@ -53,6 +65,48 @@ export class InteractionsService {
       }
     }
 
+    if (IDEMPOTENT_TYPES.has(dto.type)) {
+      const existing = await this.prisma.client.userMediaInteraction.findFirst({
+        where: { userId, mediaItemId: dto.mediaItemId, type: dto.type },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existing) {
+        if (dto.type === 'SAVE') {
+          await this.prisma.client.savedItem.upsert({
+            where: { userId_mediaItemId: { userId, mediaItemId: dto.mediaItemId } },
+            update: {},
+            create: { userId, mediaItemId: dto.mediaItemId },
+          });
+        }
+        if (dto.type === 'CONSUMED') {
+          await this.prisma.client.consumptionHistory.upsert({
+            where: { userId_mediaItemId: { userId, mediaItemId: dto.mediaItemId } },
+            update: { consumedAt: new Date() },
+            create: { userId, mediaItemId: dto.mediaItemId },
+          });
+        }
+        return existing;
+      }
+    }
+
+    let previousRating: number | undefined;
+    if (dto.type === 'RATED' && dto.rating !== undefined) {
+      const prior = await this.prisma.client.userMediaRating.findUnique({
+        where: { userId_mediaItemId: { userId, mediaItemId: dto.mediaItemId } },
+        select: { rating: true },
+      });
+      previousRating = prior?.rating;
+      if (previousRating === dto.rating) {
+        const existing = await this.prisma.client.userMediaInteraction.findFirst({
+          where: { userId, mediaItemId: dto.mediaItemId, type: 'RATED' },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (existing) {
+          return existing;
+        }
+      }
+    }
+
     const interaction = await this.prisma.client.userMediaInteraction.create({
       data: {
         userId,
@@ -83,6 +137,16 @@ export class InteractionsService {
         where: { userId_mediaItemId: { userId, mediaItemId: dto.mediaItemId } },
         update: { consumedAt: new Date() },
         create: { userId, mediaItemId: dto.mediaItemId },
+      });
+    }
+
+    if (dto.type === 'RATED' && previousRating !== undefined && previousRating !== dto.rating) {
+      await this.taste.applyInteraction({
+        userId,
+        mediaItemId: dto.mediaItemId,
+        type: 'RATED',
+        rating: previousRating,
+        invert: true,
       });
     }
 
