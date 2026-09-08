@@ -47,6 +47,8 @@ export class TasteService {
     mediaItemId: string;
     type: InteractionType;
     rating?: number;
+    /** When true, reverses a prior signal (e.g. rating change or library remove). */
+    invert?: boolean;
   }): Promise<void> {
     const media = await this.prisma.client.mediaItem.findUnique({
       where: { id: input.mediaItemId },
@@ -60,7 +62,8 @@ export class TasteService {
       return;
     }
 
-    const signal = interactionSignal(input.type, input.rating);
+    const baseSignal = interactionSignal(input.type, input.rating);
+    const signal = input.invert ? -baseSignal : baseSignal;
     const rate = interactionLearningRate(input.type);
     if (signal === 0 || rate === 0) {
       return;
