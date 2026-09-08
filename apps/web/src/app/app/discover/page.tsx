@@ -125,6 +125,20 @@ export default function DiscoverPage() {
     },
   });
 
+  const skipFilterEffect = useRef(true);
+  useEffect(() => {
+    if (skipFilterEffect.current) {
+      skipFilterEffect.current = false;
+      return;
+    }
+    if (activeMode === 'SIMILAR_TO' && !similarToId) {
+      return;
+    }
+    const timer = setTimeout(() => generate.mutate(activeMode), 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.timeAvailableMinutes, filters.language, filters.mediaType, filters.count]);
+
   const similarResults = flattenSearchResults(similarSearch.data);
   // Prefer per-mode query cache only — never reuse generate.data from another mode.
   const items = modeRecs.data?.items ?? [];
