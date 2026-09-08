@@ -103,6 +103,10 @@ export class InteractionsService {
       void this.jobs.enqueue('generate-recommendations', { userId, mode: 'FOR_YOU', count: 10 });
     }
 
+    if (dto.type === 'RATED' || dto.type === 'SAVE' || dto.type === 'CONSUMED') {
+      void this.jobs.enqueue('sync-media', { mediaItemId: dto.mediaItemId });
+    }
+
     return interaction;
   }
 
