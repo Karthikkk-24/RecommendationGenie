@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MediaCard, type MediaCardData } from '../../../components/media/media-card';
 import { FeedbackControl } from '../../../components/recommendations/feedback-control';
 import {
@@ -57,6 +57,18 @@ export default function RecommendationsPage() {
       void queryClient.invalidateQueries({ queryKey: ['recs'] });
     },
   });
+
+  const skipFilterEffect = useRef(true);
+  useEffect(() => {
+    if (skipFilterEffect.current) {
+      skipFilterEffect.current = false;
+      return;
+    }
+    const timer = setTimeout(() => generate.mutate(), 350);
+    return () => clearTimeout(timer);
+    // Regenerate when filter fields change; mutate identity is stable enough for this UI path.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.timeAvailableMinutes, filters.language, filters.mediaType, filters.count]);
 
   const batch = generate.data ?? recs.data;
   const items = batch?.items ?? [];
