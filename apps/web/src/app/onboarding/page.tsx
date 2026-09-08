@@ -192,9 +192,13 @@ function OnboardingPageInner() {
         if (selected.length === 0) {
           return;
         }
+        const missing = selected.filter((id) => ratings[id] === undefined);
+        if (missing.length > 0) {
+          throw new Error('Rate each selected title before continuing.');
+        }
         const payload = selected.map((id) => ({
           mediaItemId: id,
-          rating: ratings[id] ?? 5,
+          rating: ratings[id],
         }));
         await api('/onboarding/ratings', { method: 'POST', body: JSON.stringify({ ratings: payload }) });
         return;
@@ -369,7 +373,9 @@ function OnboardingPageInner() {
           {selected.length === 0 ? (
             <p className="text-sm text-[var(--muted)]">Go back and pick a few loves to rate.</p>
           ) : (
-            selected.map((id) => {
+            <>
+              <p className="text-sm text-[var(--muted)]">Tap stars for each title — nothing is submitted until you rate it.</p>
+              {selected.map((id) => {
               const item = popular.find((row) => row.id === id);
               return (
                 <Card key={id} className="flex flex-wrap items-center justify-between gap-4">
@@ -378,12 +384,13 @@ function OnboardingPageInner() {
                     <p className="text-xs text-[var(--muted)]">{item?.type}</p>
                   </div>
                   <RatingControl
-                    value={ratings[id] ?? 5}
+                    value={ratings[id] ?? 0}
                     onChange={(value) => setRatings((current) => ({ ...current, [id]: value }))}
                   />
                 </Card>
               );
-            })
+            })}
+            </>
           )}
         </div>
       ) : null}
