@@ -57,6 +57,11 @@ export class NotificationsService {
 
     for (const user of users) {
       try {
+        const prefs = user.notificationPreference;
+        if (!prefs?.emailDigest) {
+          continue;
+        }
+
         const generation = await this.prisma.client.recommendationGeneration.findFirst({
           where: { userId: user.id },
           orderBy: { createdAt: 'desc' },
@@ -71,6 +76,15 @@ export class NotificationsService {
         if (!generation || generation.items.length === 0) {
           continue;
         }
+
+        // Skip when this generation was already digested, or nothing newer since last send.
+        if (
+          prefs.lastDigestGenerationId === generation.id ||
+          (prefs.lastDigestSentAt && generation.createdAt <= prefs.lastDigestSentAt)
+        ) {
+          continue;
+        }
+
         const titles = generation.items.map((item) => `• ${item.mediaItem.title}`).join('\n');
         const appUrl = this.config.get<string>('APP_URL') ?? 'http://localhost:3000';
         await this.mail.send(
@@ -78,6 +92,14 @@ export class NotificationsService {
           'Your weekly Genie digest',
           `A quick look at recommendations waiting for you:\n\n${titles}\n\nOpen Genie: ${appUrl}/app`,
         );
+
+        await this.prisma.client.userNotificationPreference.update({
+          where: { userId: user.id },
+          data: {
+            lastDigestSentAt: new Date(),
+            lastDigestGenerationId: generation.id,
+          },
+        });
       } catch (error) {
         this.logger.warn(
           `Digest email failed for ${user.id}: ${error instanceof Error ? error.message : 'unknown'}`,
