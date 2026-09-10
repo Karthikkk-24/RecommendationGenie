@@ -113,26 +113,38 @@ export class JobHandlersService implements OnModuleInit, OnModuleDestroy {
 
     this.queue.register<{ limit?: number }>('backfill-media-embeddings', async (payload) => {
       const limit = payload.limit ?? 100;
-      const items = await this.prisma.client.mediaItem.findMany({
+      const candidates = await this.prisma.client.mediaItem.findMany({
         select: { id: true },
         take: limit,
         orderBy: { popularity: 'desc' },
       });
+      if (candidates.length === 0) {
+        return;
+      }
+      const existing = await this.prisma.client.embedding.findMany({
+        where: {
+          entityType: 'MEDIA',
+          entityId: { in: candidates.map((row) => row.id) },
+        },
+        select: { entityId: true },
+      });
+      const embeddedIds = new Set(existing.map((row) => row.entityId));
+      const missing = candidates.filter((row) => !embeddedIds.has(row.id));
+      if (missing.length === 0) {
+        this.logger.log(`Embedding backfill skipped; all ${candidates.length} top items already embedded`);
+        return;
+      }
       let embedded = 0;
-      for (const item of items) {
+      for (const item of missing) {
         const vector = await this.embeddings.embedMedia(item.id);
         if (vector) {
           embedded += 1;
         }
       }
-      this.logger.log(`Backfilled embeddings for ${embedded}/${items.length} media items`);
+      this.logger.log(`Backfilled embeddings for ${embedded}/${missing.length} missing media items`);
     });
 
-    void this.queue.enqueue('backfill-media-embeddings', { limit: 200 }).catch((error: unknown) => {
-      this.logger.error(
-        `Failed to enqueue embedding backfill: ${error instanceof Error ? error.message : 'unknown'}`,
-      );
-    });
+    void this.enqueueBootEmbeddingBackfill();
 
     this.digestTimer = setInterval(() => {
       void this.queue.enqueue('send-digest-emails', {}).catch((error: unknown) => {
@@ -141,6 +153,35 @@ export class JobHandlersService implements OnModuleInit, OnModuleDestroy {
         );
       });
     }, WEEK_MS);
+  }
+
+  private async enqueueBootEmbeddingBackfill(): Promise<void> {
+    try {
+      const popular = await this.prisma.client.mediaItem.findMany({
+        select: { id: true },
+        take: 200,
+        orderBy: { popularity: 'desc' },
+      });
+      if (popular.length === 0) {
+        return;
+      }
+      const embedded = await this.prisma.client.embedding.findMany({
+        where: {
+          entityType: 'MEDIA',
+          entityId: { in: popular.map((row) => row.id) },
+        },
+        select: { entityId: true },
+      });
+      if (embedded.length >= popular.length) {
+        this.logger.log('Skipping boot embedding backfill; top catalog already embedded');
+        return;
+      }
+      await this.queue.enqueue('backfill-media-embeddings', { limit: 200 });
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to enqueue embedding backfill: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
   }
 
   onModuleDestroy(): void {
