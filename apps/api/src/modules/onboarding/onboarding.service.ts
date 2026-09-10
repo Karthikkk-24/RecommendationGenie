@@ -90,10 +90,22 @@ export class OnboardingService {
   }
 
   async preferences(userId: string, dto: OnboardingPreferencesDto) {
+    const preferredTone =
+      dto.preferredTone === undefined || dto.preferredTone === null || dto.preferredTone === 'neutral'
+        ? null
+        : dto.preferredTone;
+    const preferenceData = {
+      favoriteGenres: dto.favoriteGenres,
+      dislikedGenres: dto.dislikedGenres,
+      preferredThemes: dto.preferredThemes,
+      preferredPacing: dto.preferredPacing,
+      preferredComplexity: dto.preferredComplexity,
+      preferredTone,
+    };
     const preference = await this.prisma.client.userPreference.upsert({
       where: { userId },
-      update: dto,
-      create: { userId, ...dto, enabledMediaTypes: ['MOVIE', 'GAME', 'MUSIC'] },
+      update: preferenceData,
+      create: { userId, ...preferenceData, enabledMediaTypes: ['MOVIE', 'GAME', 'MUSIC'] },
     });
 
     await this.persistOnboarding(userId, {
@@ -103,7 +115,7 @@ export class OnboardingService {
       preferredThemes: dto.preferredThemes,
       preferredPacing: dto.preferredPacing,
       preferredComplexity: dto.preferredComplexity,
-      preferredTone: dto.preferredTone,
+      preferredTone,
     });
 
     await this.taste.seedFromOnboarding(userId, {
@@ -112,7 +124,7 @@ export class OnboardingService {
       preferredThemes: dto.preferredThemes,
       preferredPacing: dto.preferredPacing,
       preferredComplexity: dto.preferredComplexity,
-      preferredTone: dto.preferredTone,
+      preferredTone: preferredTone ?? 'neutral',
       enabledMediaTypes: preference.enabledMediaTypes,
     });
 
